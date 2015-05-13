@@ -92,6 +92,14 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #define WIFI_DRIVER_FW_PATH_P2P		NULL
 #endif
 
+#ifdef BOARD_WIFI_REALTEK
+#undef WIFI_DRIVER_FW_PATH_STA
+#define WIFI_DRIVER_FW_PATH_STA         "STA"
+#undef WIFI_DRIVER_FW_PATH_AP
+#define WIFI_DRIVER_FW_PATH_AP          "AP"
+#undef WIFI_DRIVER_FW_PATH_P2P
+#define WIFI_DRIVER_FW_PATH_P2P         "P2P"
+#endif
 #ifndef WIFI_DRIVER_FW_PATH_PARAM
 #define WIFI_DRIVER_FW_PATH_PARAM	"/sys/module/wlan/parameters/fwpath"
 #endif
@@ -229,6 +237,8 @@ int is_wifi_driver_loaded() {
 
 int wifi_load_driver()
 {
+    DIR *d;
+    struct dirent *de;
 #ifdef WIFI_DRIVER_MODULE_PATH
     char driver_status[PROPERTY_VALUE_MAX];
     int count = 100; /* wait at most 20 seconds for completion */
@@ -240,6 +250,28 @@ int wifi_load_driver()
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
         return -1;
 
+#if 1
+#define TIME_COUNT 200
+    count = 0;
+    ALOGD("check loading wifi driver is ok...");
+    do {
+        d = opendir("/sys/class/net");
+        if (d == 0) {
+           ALOGD("fail to open /sys/class/net");
+           wifi_unload_driver();
+           return -1;
+        }
+        while ((de = readdir(d))) {
+            if (strcmp(de->d_name, "wlan0")== 0) {
+                ALOGE("driver loaded");
+                property_set(DRIVER_PROP_NAME, "ok");
+            }
+        }
+        closedir(d);
+        usleep(200000);// 200ms
+        ALOGD("driver not ok ,wait\n");
+    } while (count++ <= TIME_COUNT);
+#else
     if (strcmp(FIRMWARE_LOADER,"") == 0) {
         /* usleep(WIFI_DRIVER_LOADER_DELAY); */
         property_set(DRIVER_PROP_NAME, "ok");
@@ -259,6 +291,7 @@ int wifi_load_driver()
         }
         usleep(200000);
     }
+#endif
     property_set(DRIVER_PROP_NAME, "timeout");
     wifi_unload_driver();
     return -1;
@@ -790,6 +823,7 @@ int wifi_change_fw_path(const char *fwpath)
     int fd;
     int ret = 0;
 
+#ifndef BOARD_WIFI_REALTEK
     if (!fwpath)
         return ret;
     fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
@@ -803,5 +837,6 @@ int wifi_change_fw_path(const char *fwpath)
         ret = -1;
     }
     close(fd);
+#endif
     return ret;
 }
