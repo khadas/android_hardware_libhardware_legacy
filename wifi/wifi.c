@@ -265,6 +265,7 @@ int wifi_load_driver()
             if (strcmp(de->d_name, "wlan0")== 0) {
                 ALOGE("driver loaded");
                 property_set(DRIVER_PROP_NAME, "ok");
+                return 0;
             }
         }
         closedir(d);
