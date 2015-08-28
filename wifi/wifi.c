@@ -103,7 +103,19 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #ifndef WIFI_DRIVER_FW_PATH_PARAM
 #define WIFI_DRIVER_FW_PATH_PARAM	"/sys/module/wlan/parameters/fwpath"
 #endif
-
+#ifdef MULTI_WIFI_SUPPORT
+char wifi_driver_fw_path[9][3][60]={\
+	{"/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_apsta.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_p2p.bin"},
+        {"/etc/wifi/40181/fw_bcm40181a2.bin","/etc/wifi/40181/fw_bcm40181a2_apsta.bin","/etc/wifi/40181/fw_bcm40181a2_p2p.bin"},
+        {"/etc/wifi/6335/fw_bcm4339a0_ag.bin","/etc/wifi/6335/fw_bcm4339a0_ag_apsta.bin","/etc/wifi/6335/fw_bcm4339a0_ag_p2p.bin"},
+        {"/etc/wifi/6234/fw_bcm43341b0_ag.bin","/etc/wifi/6234/fw_bcm43341b0_ag_apsta.bin","/etc/wifi/6234/fw_bcm43341b0_ag_p2p.bin"},
+        {"/etc/wifi/4354/fw_bcm4354a1_ag.bin","/etc/wifi/4354/fw_bcm4354a1_ag_apsta.bin","/etc/wifi/4354/fw_bcm4354a1_ag_p2p.bin"},
+        {"/etc/wifi/62x2/fw_bcm43241b4_ag.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_apsta.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_p2p.bin"},
+        {"/etc/wifi/6212/fw_bcm43438a0.bin","/etc/wifi/6212/fw_bcm43438a0_apsta.bin","/etc/wifi/6212/fw_bcm43438a0_p2p.bin"},
+	{"/etc/wifi/4356/fw_bcm4356a2_ag.bin","/etc/wifi/4356/fw_bcm4356a2_ag_apsta.bin","/etc/wifi/4356/fw_bcm4356a2_ag_p2p.bin"},
+        {"STA","AP","P2P"}
+};
+#endif
 #define WIFI_DRIVER_LOADER_DELAY	1000000
 
 static const char IFACE_DIR[]           = "/data/system/wpa_supplicant";
@@ -119,9 +131,18 @@ static const char SUPPLICANT_NAME[]     = "wpa_supplicant";
 static const char SUPP_PROP_NAME[]      = "init.svc.wpa_supplicant";
 static const char P2P_SUPPLICANT_NAME[] = "p2p_supplicant";
 static const char P2P_PROP_NAME[]       = "init.svc.p2p_supplicant";
+#ifdef MULTI_WIFI_SUPPORT
+static const char BCM_SUPPLICANT_NAME[] = "bcm_supplicant";
+static const char BCM_PROP_NAME[]       = "init.svc.bcm_supplicant";
+#endif
 static const char SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/wpa_supplicant.conf";
 static const char SUPP_CONFIG_FILE[]    = "/data/misc/wifi/wpa_supplicant.conf";
 static const char P2P_CONFIG_FILE[]     = "/data/misc/wifi/p2p_supplicant.conf";
+#ifdef MULTI_WIFI_SUPPORT
+static const char BCM_SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/bcm_supplicant.conf";
+static const char BCM_SUPP_CONFIG_FILE[]    = "/data/misc/wifi/bcm_supplicant.conf";
+static const char BCM_P2P_CONFIG_FILE[]     = "/data/misc/wifi/bcm_p2p_supplicant.conf";
+#endif
 static const char CONTROL_IFACE_PATH[]  = "/data/misc/wifi/sockets";
 static const char MODULE_FILE[]         = "/proc/modules";
 
@@ -139,6 +160,10 @@ static unsigned char dummy_key[21] = { 0x02, 0x11, 0xbe, 0x33, 0x43, 0x35,
 static char supplicant_name[PROPERTY_VALUE_MAX];
 /* Is either SUPP_PROP_NAME or P2P_PROP_NAME */
 static char supplicant_prop_name[PROPERTY_KEY_MAX];
+extern int usb_sdio_wifi;
+extern int read_no(int *x);
+extern int multi_wifi_load_driver();
+extern int multi_wifi_unload_driver();
 
 static int insmod(const char *filename, const char *args)
 {
@@ -235,10 +260,62 @@ int is_wifi_driver_loaded() {
 #endif
 }
 
+#include <asm/ioctl.h>
+
+#define USB_POWER_UP    _IO('m',1)
+#define USB_POWER_DOWN  _IO('m',2)
+#define SDIO_POWER_UP    _IO('m',3)
+#define SDIO_POWER_DOWN  _IO('m',4)
+//0: power on
+//!0: power off
+void set_wifi_power(int on)
+{
+    int fd;
+    fd = open("/dev/wifi_power", O_RDWR);
+    if (fd !=  - 1) {
+        if (on == 0) {
+            if (ioctl (fd,USB_POWER_UP) < 0) {
+                printf("Set usb Wi-Fi power up error!!!\n");
+		close(fd);
+                return;
+            }
+        }else if(on==1) {
+            if (ioctl (fd,USB_POWER_DOWN)<0) {
+                printf("Set usb Wi-Fi power down error!!!\n");
+		close(fd);
+                return;
+            }
+        }else if(on==2) {
+            if (ioctl (fd,SDIO_POWER_UP)<0) {
+                printf("Set SDIO Wi-Fi power up error!!!\n");
+		close(fd);
+                return;
+            }
+        }else if (on==3) {
+            if (ioctl (fd,SDIO_POWER_DOWN)<0) {
+                printf("Set SDIO Wi-Fi power down error!!!\n");
+		close(fd);
+                return;
+            }
+        }
+    }
+    else
+        ALOGE("Device open failed !!!\n");
+    close(fd);
+    return;
+}
 int wifi_load_driver()
 {
+    FILE *fp        = NULL;
     DIR *d;
     struct dirent *de;
+#ifdef MULTI_WIFI_SUPPORT
+    set_wifi_power(2);
+#else
+#ifdef USB_WIFI_SUPPORT
+    set_wifi_power(0);
+#endif
+#endif
 #ifdef WIFI_DRIVER_MODULE_PATH
     char driver_status[PROPERTY_VALUE_MAX];
     int count = 100; /* wait at most 20 seconds for completion */
@@ -247,10 +324,21 @@ int wifi_load_driver()
         return 0;
     }
 
+#ifdef MULTI_WIFI_SUPPORT
+    if (multi_wifi_load_driver() < 0)
+    {
+        set_wifi_power(3);
+        set_wifi_power(0);
+        if (multi_wifi_load_driver() < 0)
+        {
+            set_wifi_power(1);
+            return -1;
+        }
+    }
+#else
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
         return -1;
-
-#if 1
+#endif
 #define TIME_COUNT 200
     count = 0;
     ALOGD("check loading wifi driver is ok...");
@@ -273,27 +361,6 @@ int wifi_load_driver()
         usleep(200000);// 200ms
         ALOGD("driver not ok ,wait\n");
     } while (count++ <= TIME_COUNT);
-#else
-    if (strcmp(FIRMWARE_LOADER,"") == 0) {
-        /* usleep(WIFI_DRIVER_LOADER_DELAY); */
-        property_set(DRIVER_PROP_NAME, "ok");
-    }
-    else {
-        property_set("ctl.start", FIRMWARE_LOADER);
-    }
-    sched_yield();
-    while (count-- > 0) {
-        if (property_get(DRIVER_PROP_NAME, driver_status, NULL)) {
-            if (strcmp(driver_status, "ok") == 0)
-                return 0;
-            else if (strcmp(DRIVER_PROP_NAME, "failed") == 0) {
-                wifi_unload_driver();
-                return -1;
-            }
-        }
-        usleep(200000);
-    }
-#endif
     property_set(DRIVER_PROP_NAME, "timeout");
     wifi_unload_driver();
     return -1;
@@ -307,6 +374,17 @@ int wifi_unload_driver()
 {
     usleep(200000); /* allow to finish interface down */
 #ifdef WIFI_DRIVER_MODULE_PATH
+#ifdef MULTI_WIFI_SUPPORT
+    if (multi_wifi_unload_driver() < 0)
+    {
+        ALOGE("Unload driver failed! \n");
+#ifdef USB_WIFI_SUPPORT
+        set_wifi_power(1);
+#endif
+        return -1;
+    }
+
+#else
     if (rmmod(DRIVER_MODULE_NAME) == 0) {
         int count = 20; /* wait at most 10 seconds for completion */
         while (count-- > 0) {
@@ -316,15 +394,23 @@ int wifi_unload_driver()
         }
         usleep(500000); /* allow card removal */
         if (count) {
+#ifdef USB_WIFI_SUPPORT
+        set_wifi_power(1);
+#endif
             return 0;
         }
         return -1;
     } else
         return -1;
+#endif
 #else
     property_set(DRIVER_PROP_NAME, "unloaded");
+#ifdef USB_WIFI_SUPPORT
+    set_wifi_power(1);
+#endif
     return 0;
 #endif
+return 0;
 }
 
 int ensure_entropy_file_exists()
@@ -391,12 +477,25 @@ int ensure_config_file_exists(const char *config_file)
         ALOGE("Cannot access \"%s\": %s", config_file, strerror(errno));
         return -1;
     }
-
-    srcfd = TEMP_FAILURE_RETRY(open(SUPP_CONFIG_TEMPLATE, O_RDONLY));
-    if (srcfd < 0) {
-        ALOGE("Cannot open \"%s\": %s", SUPP_CONFIG_TEMPLATE, strerror(errno));
-        return -1;
+#ifdef MULTI_WIFI_SUPPORT
+    if (usb_sdio_wifi == 0)
+     {
+        srcfd = TEMP_FAILURE_RETRY(open(BCM_SUPP_CONFIG_TEMPLATE, O_RDONLY));
+        if (srcfd < 0) {
+          ALOGE("Cannot open \"%s\": %s", BCM_SUPP_CONFIG_TEMPLATE, strerror(errno));
+          return -1;
+        }
     }
+    else {
+#endif
+        srcfd = TEMP_FAILURE_RETRY(open(SUPP_CONFIG_TEMPLATE, O_RDONLY));
+        if (srcfd < 0) {
+          ALOGE("Cannot open \"%s\": %s", SUPP_CONFIG_TEMPLATE, strerror(errno));
+          return -1;
+        }
+#ifdef MULTI_WIFI_SUPPORT
+    }
+#endif
 
     destfd = TEMP_FAILURE_RETRY(open(config_file, O_CREAT|O_RDWR, 0660));
     if (destfd < 0) {
@@ -446,14 +545,36 @@ int wifi_start_supplicant(int p2p_supported)
 #endif
 
     if (p2p_supported) {
+#ifdef MULTI_WIFI_SUPPORT
+        if (usb_sdio_wifi == 0) {
+           strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
+           strcpy(supplicant_prop_name, BCM_PROP_NAME);
+        }
+        else {
+#endif
         strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
         strcpy(supplicant_prop_name, P2P_PROP_NAME);
-
-        /* Ensure p2p config file is created */
+#ifdef MULTI_WIFI_SUPPORT
+        }
+#endif
+       /* Ensure p2p config file is created */
+#ifdef MULTI_WIFI_SUPPORT
+    if (usb_sdio_wifi == 0) {
+        if (ensure_config_file_exists(BCM_P2P_CONFIG_FILE) < 0) {
+            ALOGE("Failed to create a p2p config file");
+            return -1;
+        }
+    }
+    else {
+#endif
         if (ensure_config_file_exists(P2P_CONFIG_FILE) < 0) {
             ALOGE("Failed to create a p2p config file");
             return -1;
         }
+
+#ifdef MULTI_WIFI_SUPPORT
+    }
+#endif
 
     } else {
         strcpy(supplicant_name, SUPPLICANT_NAME);
@@ -466,11 +587,24 @@ int wifi_start_supplicant(int p2p_supported)
         return 0;
     }
 
-    /* Before starting the daemon, make sure its config file exists */
-    if (ensure_config_file_exists(SUPP_CONFIG_FILE) < 0) {
-        ALOGE("Wi-Fi will not be enabled");
-        return -1;
+#ifdef MULTI_WIFI_SUPPORT
+    if (usb_sdio_wifi == 0) {
+        /* Before starting the daemon, make sure its config file exists */
+        if (ensure_config_file_exists(BCM_SUPP_CONFIG_FILE) < 0) {
+            ALOGE("Wi-Fi will not be enabled");
+            return -1;
+        }
     }
+    else {
+#endif
+        /* Before starting the daemon, make sure its config file exists */
+        if (ensure_config_file_exists(SUPP_CONFIG_FILE) < 0) {
+           ALOGE("Wi-Fi will not be enabled");
+           return -1;
+        }
+#ifdef MULTI_WIFI_SUPPORT
+    }
+#endif
 
     if (ensure_entropy_file_exists() < 0) {
         ALOGE("Wi-Fi entropy file was not created");
@@ -535,8 +669,18 @@ int wifi_stop_supplicant(int p2p_supported)
     int count = 50; /* wait at most 5 seconds for completion */
 
     if (p2p_supported) {
-        strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
-        strcpy(supplicant_prop_name, P2P_PROP_NAME);
+#ifdef MULTI_WIFI_SUPPORT
+        if (usb_sdio_wifi == 0) {
+            strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, BCM_PROP_NAME);
+        }
+        else {
+#endif
+            strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, P2P_PROP_NAME);
+#ifdef MULTI_WIFI_SUPPORT
+        }
+#endif
     } else {
         strcpy(supplicant_name, SUPPLICANT_NAME);
         strcpy(supplicant_prop_name, SUPP_PROP_NAME);
@@ -808,13 +952,31 @@ int wifi_command(const char *command, char *reply, size_t *reply_len)
 
 const char *wifi_get_fw_path(int fw_type)
 {
+#ifdef MULTI_WIFI_SUPPORT
+    int fw_no=0;
+    read_no(&fw_no);
+    if (fw_no >7)
+        fw_no=8;
+#endif
     switch (fw_type) {
     case WIFI_GET_FW_PATH_STA:
+#ifdef MULTI_WIFI_SUPPORT
+        return wifi_driver_fw_path[fw_no][0];
+#else
         return WIFI_DRIVER_FW_PATH_STA;
+#endif
     case WIFI_GET_FW_PATH_AP:
+#ifdef MULTI_WIFI_SUPPORT
+        return wifi_driver_fw_path[fw_no][1];
+#else
         return WIFI_DRIVER_FW_PATH_AP;
+#endif
     case WIFI_GET_FW_PATH_P2P:
+#ifdef MULTI_WIFI_SUPPORT
+        return wifi_driver_fw_path[fw_no][2];
+#else
         return WIFI_DRIVER_FW_PATH_P2P;
+#endif
     }
     return NULL;
 }
@@ -824,6 +986,12 @@ int wifi_change_fw_path(const char *fwpath)
     int len;
     int fd;
     int ret = 0;
+#ifdef MULTI_WIFI_SUPPORT
+    int wifi_no=0;
+    read_no(&wifi_no);
+    if (wifi_no > 7)
+        return ret;
+#endif
 
 #ifndef BOARD_WIFI_REALTEK
     if (!fwpath)
