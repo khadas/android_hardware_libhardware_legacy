@@ -134,6 +134,8 @@ static const char P2P_PROP_NAME[]       = "init.svc.p2p_supplicant";
 #ifdef MULTI_WIFI_SUPPORT
 static const char BCM_SUPPLICANT_NAME[] = "bcm_supplicant";
 static const char BCM_PROP_NAME[]       = "init.svc.bcm_supplicant";
+static const char RTL_SUPPLICANT_NAME[] = "rtl_supplicant";
+static const char RTL_PROP_NAME[]       = "init.svc.rtl_supplicant";
 #endif
 static const char SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/wpa_supplicant.conf";
 static const char SUPP_CONFIG_FILE[]    = "/data/misc/wifi/wpa_supplicant.conf";
@@ -551,11 +553,12 @@ int wifi_start_supplicant(int p2p_supported)
            strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
         else {
-#endif
-        strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
-        strcpy(supplicant_prop_name, P2P_PROP_NAME);
-#ifdef MULTI_WIFI_SUPPORT
+           strcpy(supplicant_name, RTL_SUPPLICANT_NAME);
+           strcpy(supplicant_prop_name, RTL_PROP_NAME);
         }
+#else
+           strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
+           strcpy(supplicant_prop_name, P2P_PROP_NAME);
 #endif
        /* Ensure p2p config file is created */
 #ifdef MULTI_WIFI_SUPPORT
@@ -675,11 +678,12 @@ int wifi_stop_supplicant(int p2p_supported)
             strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
         else {
-#endif
+            strcpy(supplicant_name, RTL_SUPPLICANT_NAME);
+            strcpy(supplicant_prop_name, RTL_PROP_NAME);
+        }
+#else
             strcpy(supplicant_name, P2P_SUPPLICANT_NAME);
             strcpy(supplicant_prop_name, P2P_PROP_NAME);
-#ifdef MULTI_WIFI_SUPPORT
-        }
 #endif
     } else {
         strcpy(supplicant_name, SUPPLICANT_NAME);
