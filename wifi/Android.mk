@@ -59,6 +59,11 @@ LOCAL_SRC_FILES += wifi/multi_dongle.c
 
 endif
 
+ifeq ($(BCM_USB_WIFI),true)
+LOCAL_CFLAGS += -DBCM_USB_WIFI
+LOCAL_CFLAGS += -DUSB_WIFI_SUPPORT
+endif
+
 LOCAL_SRC_FILES += wifi/wifi.c
 
 ifdef WPA_SUPPLICANT_VERSION

@@ -47,6 +47,10 @@ extern void get_dhcp_info();
 extern int init_module(void *, unsigned long, const char *);
 extern int delete_module(const char *, unsigned int);
 void wifi_close_sockets();
+#ifdef BCM_USB_WIFI
+void enable_bcmdl(int enable);
+#endif
+
 
 #ifndef LIBWPA_CLIENT_EXISTS
 #define WPA_EVENT_TERMINATING "CTRL-EVENT-TERMINATING "
@@ -364,6 +368,11 @@ int wifi_load_driver()
 #else
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
         return -1;
+
+#ifdef BCM_USB_WIFI
+   enable_bcmdl(1);
+#endif
+
 #endif
 #define TIME_COUNT 200
     count = 0;
@@ -431,6 +440,11 @@ int wifi_unload_driver()
 #ifdef USB_WIFI_SUPPORT
         set_wifi_power(1);
 #endif
+
+#ifdef BCM_USB_WIFI
+        enable_bcmdl(0);
+#endif
+
             return 0;
         }
         return -1;
@@ -1041,3 +1055,35 @@ int wifi_change_fw_path(const char *fwpath)
 #endif
     return ret;
 }
+
+#ifdef BCM_USB_WIFI
+/***********************
+*this func was supposed to enable/disable bcmdl, however, AP6269 needs to be initialized after power reset, including:   *
+*1. wifi enable                                                                                                          *
+*2. suspend & resume.                                                                                                    *
+*wifi.c won't be noticed after suspend&resume, therefore bcmdl must finish the initializations all by itself.            *
+*bcmdl would set status->ok after initializations, so we just have a check here, and set status->fail when disabling wifi*
+************************/
+void enable_bcmdl(int enable)
+{
+    int i, cnt=40;
+    char bcmdl_status[PROPERTY_VALUE_MAX];
+    if (enable == 1) {
+	while (cnt--) {
+            ALOGD("checking bcmdl status");
+            if (property_get("bcmdl_status", bcmdl_status, NULL)) {
+                ALOGD("....%s\n", bcmdl_status);
+                if (strcmp(bcmdl_status, "ok") == 0)
+                    break;
+            }
+            usleep(100000);
+
+        }
+	if (cnt == 0)
+            ALOGE("checking bcmdl status run out of cnt\n");
+
+    } else {
+        property_set("bcmdl_status", "fail");
+    }
+}
+#endif
