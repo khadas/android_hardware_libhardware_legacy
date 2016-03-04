@@ -54,6 +54,11 @@ static const char BS8189_MODULE_TAG[]   = "8189es";
 static const char BS8189_MODULE_PATH[]  = "/system/lib/8189es.ko";
 static const char BS8189_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
 
+static const char FS8189_MODULE_NAME[]  = "8189fs";
+static const char FS8189_MODULE_TAG[]   = "8189fs";
+static const char FS8189_MODULE_PATH[]  = "/system/lib/8189fs.ko";
+static const char FS8189_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
+
 static const char BCM40183_MODULE_NAME[]  = "dhd";
 static const char BCM40183_MODULE_TAG[]   = "dhd";
 static const char BCM40183_MODULE_PATH[]  = "/system/lib/dhd.ko";
@@ -93,10 +98,21 @@ extern int eu8188_load_driver();
 extern int search_8188eu(unsigned  int vid,unsigned  int pid);
 extern int eu8188_unload_driver();
 
+extern int ftv8188_load_driver();
+extern int search_8188ftv(unsigned  int vid,unsigned  int pid);
+extern int ftv8188_unload_driver();
+
 extern int eu8192_load_driver();
 extern int search_8192eu(unsigned  int vid,unsigned  int pid);
 extern int eu8192_unload_driver();
 
+extern int mt7601_load_driver();
+extern int search_mt7601(unsigned  int vid,unsigned  int pid);
+extern int mt7601_unload_driver();
+
+extern int mt7603_load_driver();
+extern int search_mt7603(unsigned  int vid,unsigned  int pid);
+extern int mt7603_unload_driver();
 char dongle_id[] = "/data/misc/wifi/wid_fp";
 
 int write_no(int *x)
@@ -114,6 +130,11 @@ int write_no(int *x)
         return -1;
     }
     close(fd);
+    if (chmod(dongle_id, 0664) < 0 || chown(dongle_id, AID_SYSTEM, AID_WIFI) < 0) {
+       ALOGE("Error changing permissions of %s to 0664: %s",
+             dongle_id, strerror(errno));
+       return -1;
+    }
     return 0;
 }
 
@@ -200,7 +221,7 @@ int search_bcm6335(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -245,8 +266,8 @@ int search_bcm40183(unsigned int x,unsigned int y)
     char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
-        ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        ALOGE("Open sdio wifi file failed 40183 !!! \n");
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -293,7 +314,7 @@ int search_bcm6210(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -339,7 +360,7 @@ int search_bcm6234(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -384,7 +405,7 @@ int search_bcm6354(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -429,7 +450,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -438,7 +459,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"4356")) {
+    if (strstr(sdio_buf,"432256")) {
         ALOGE("Found 6356 !!!\n");
         usb_sdio_wifi=0;
         return 1;
@@ -475,7 +496,7 @@ int search_bcm62x2(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
 
     memset(sdio_buf,0,sizeof(sdio_buf));
@@ -522,7 +543,7 @@ int search_bcm6212(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -568,7 +589,7 @@ int search_bs8723(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -631,6 +652,51 @@ int search_es8189(unsigned int x,unsigned int y)
     return 0;
 }
 
+int fs8189_load_driver()
+{
+    if (wifi_insmod(FS8189_MODULE_PATH, FS8189_MODULE_ARG) !=0) {
+        ALOGE("Failed to insmod 8189 ! \n");
+        return -1;
+    }
+    ALOGD("Success to insmod bs8189 driver! \n");
+    return 0;
+}
+
+int fs8189_unload_driver()
+{
+    if (wifi_rmmod(FS8189_MODULE_NAME) != 0) {
+        ALOGE("Failed to rmmod bs8189 driver ! \n");
+        return -1;
+    }
+    ALOGD("Success to rmmod bs8189 driver ! \n");
+    return 0;
+}
+
+int search_fs8189(unsigned int x,unsigned int y)
+{
+    int fd,len;
+    char sdio_buf[128];
+    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
+    FILE *fp = fopen(file_name,"r");
+    if (!fp) {
+        ALOGE("Open sdio wifi file failed !!! \n");
+        return -1;
+    }
+    memset(sdio_buf,0,sizeof(sdio_buf));
+    if (fread(sdio_buf, 1,128,fp) < 1) {
+        ALOGE("Read error for %m\n", errno);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    if (strstr(sdio_buf,"f179")) {
+        ALOGE("Found 8189fs !!!\n");
+        usb_sdio_wifi=1;
+        return 1;
+    }
+    return 0;
+}
+
 static int cur_vid = 0;
 static int cur_pid = 0;
 typedef struct load_info{
@@ -639,24 +705,26 @@ typedef struct load_info{
 	int (*search)(unsigned int,unsigned int);
 }dongle_info;
 
-#define NUM_OF_DONGLE 14
 #define SDIO_WIFI_COUNT 2
-static const dongle_info dongle_registerd[NUM_OF_DONGLE]={\
-																{bcm40183_load_driver,bcm40183_unload_driver,search_bcm40183},\
-																{bcm6210_load_driver,bcm6210_unload_driver,search_bcm6210},\
-                                                                                                                                {bcm6335_load_driver,bcm6335_unload_driver,search_bcm6335},\
-                                                                                                                                {bcm6234_load_driver,bcm6234_unload_driver,search_bcm6234},\
-                                                                                                                                {bcm6354_load_driver,bcm6354_unload_driver,search_bcm6354},\
-                                                                                                                                {bcm62x2_load_driver,bcm62x2_unload_driver,search_bcm62x2},\
-                                                                                                                                {bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
-																{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
-																{eu8188_load_driver,eu8188_unload_driver,search_8188eu},\
-																{cu8192_load_driver,cu8192_unload_driver,search_cu},\
-                                {du8192_load_driver,du8192_unload_driver,search_du},\
-                                {eu8192_load_driver,eu8192_unload_driver,search_8192eu},\
-                                {bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
-                                {es8189_load_driver,es8189_unload_driver,search_es8189}};
-
+static const dongle_info dongle_registerd[]={\
+	{bcm40183_load_driver,bcm40183_unload_driver,search_bcm40183},\
+	{bcm6210_load_driver,bcm6210_unload_driver,search_bcm6210},\
+	{bcm6335_load_driver,bcm6335_unload_driver,search_bcm6335},\
+	{bcm6234_load_driver,bcm6234_unload_driver,search_bcm6234},\
+	{bcm6354_load_driver,bcm6354_unload_driver,search_bcm6354},\
+	{bcm62x2_load_driver,bcm62x2_unload_driver,search_bcm62x2},\
+	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
+	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
+	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
+	{es8189_load_driver,es8189_unload_driver,search_es8189},\
+	{fs8189_load_driver,fs8189_unload_driver,search_fs8189},\
+	{eu8188_load_driver,eu8188_unload_driver,search_8188eu},\
+	{ftv8188_load_driver,ftv8188_unload_driver,search_8188ftv},\
+	{cu8192_load_driver,cu8192_unload_driver,search_cu},\
+	{du8192_load_driver,du8192_unload_driver,search_du},\
+	{eu8192_load_driver,eu8192_unload_driver,search_8192eu},\
+	{mt7601_load_driver,mt7601_unload_driver,search_mt7601},\
+	{mt7603_load_driver,mt7603_unload_driver,search_mt7603}};
 
 int DONT_SUPPORT_P2P = 5;
 static int load_dongle_index = -1;
@@ -720,7 +788,8 @@ static int print_device(struct usb_device *dev, int level)
   char string[256];
   int ret, i;
 
-
+  if (dev == NULL)
+	return 0;
   udev = usb_open(dev);
   if (udev) {
     if (dev->descriptor.iManufacturer) {
@@ -733,8 +802,6 @@ static int print_device(struct usb_device *dev, int level)
     } else
       snprintf(description, sizeof(description), "%04X - ",
                dev->descriptor.idVendor);
-		ALOGE("The VID is %04X \n",dev->descriptor.idVendor);
-		ALOGE("indent_usb_table is %d\n",indent_usb_table);
 		usb_table[indent_usb_table].vid = dev->descriptor.idVendor;
 
     if (dev->descriptor.iProduct) {
@@ -748,7 +815,6 @@ static int print_device(struct usb_device *dev, int level)
     } else
       snprintf(description + strlen(description), sizeof(description) -
                strlen(description), "%04X", dev->descriptor.idProduct);
-    ALOGE("The PID is %04X\n",dev->descriptor.idProduct);
 		usb_table[indent_usb_table].pid = dev->descriptor.idProduct;
     indent_usb_table ++;
   } else{
@@ -834,7 +900,6 @@ int usb_wifi_load_driver()
     int usb_vidpid_count=0;
     int count = 100;
     struct usb_bus *bus;
-    ALOGE("USB Wi-Fi load driver start ...\n");
     usb_init();
     usb_find_busses();
     usb_find_devices();
@@ -857,10 +922,9 @@ int usb_wifi_load_driver()
     }
     usb_vidpid_count = indent_usb_table;
     indent_usb_table = 0;
-    ALOGD("Start to search ...\n");
     load_dongle_index = -1;
-    for (i = 0;i < usb_vidpid_count; i ++) {
-        for (j = 2;j < NUM_OF_DONGLE;j ++) {
+    for (j = 11;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
+        for (i = 0;i < usb_vidpid_count; i ++) {
             if (dongle_registerd[j].search(usb_table[i].vid,usb_table[i].pid) == 1) {
                 usb_sdio_wifi=1;
                 write_no(&j);
@@ -884,29 +948,14 @@ int usb_wifi_load_driver()
     return 0;
 }
 
-int usb_wifi_unload_driver()
-{
-    int j;
-    usleep(200000);
-    ALOGE("USB Wi-Fi unload driver start ...\n");
-    for (j = 0;j < NUM_OF_DONGLE;j ++) {
-        if (dongle_registerd[j].search(cur_vid,cur_pid) ==1) {
-            ALOGE("The dongle no. %d would be unloaded!!\n",j);
-            if (dongle_registerd[j].unload() != 0) {
-                ALOGE("Failed to unload wifi driver!\n");
-                return -1;
-            }
-        }
-    }
-    return 0;
-}
-
 int sdio_wifi_load_driver()
 {
     int i;
+    int ret =0;
     load_dongle_index = -1;
-    for (i=0;i < NUM_OF_DONGLE; i++) {
-        if (dongle_registerd[i].search(0,0) ==1) {
+    for (i=0;i < 11; i++) {
+        ret=dongle_registerd[i].search(0,0);
+        if (ret ==1) {
             load_dongle_index = i;
             write_no(&i);
             ALOGD("The matched dongle no. is %d\n", i);
@@ -915,27 +964,54 @@ int sdio_wifi_load_driver()
                 return -1;
             }
         return 0;
+        }else if(ret ==2){
+            return -1;
+            ALOGD("NO sdio device!!!\n");
+        }else if(ret ==0){
+            continue;
         }
     }
     if (load_dongle_index == -1) {
-        ALOGD("Didn't find matched wifi dongle!!!\n");
+        ALOGD("Didn't find matched sdio wifi dongle!!!\n");
         return -1;
     }
     return 0;
 }
 
+const char *get_wifi_vendor_name()
+{
+    int dgle_no= 0;
+    read_no(&dgle_no);
+    if (dgle_no < 8) {
+        return "bcm";
+    }
+    else if (7 <dgle_no && dgle_no < 16) {
+        return "realtek";
+    }
+    else if (dgle_no > 15) {
+        return "mtk";
+    }
+    ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");
+    return "bcm";
+}
+
 int multi_wifi_load_driver()
 {
+    int wait_time=0;
     if (!sdio_wifi_load_driver()) {
-        ALOGD("Success to load wifi driver !!!\n");
         return 0;
     }
-    if (usb_wifi_load_driver() < 0) {
-        ALOGD("Didn't find matched usb wifi dongle !!!\n");
-        return -1;
-    }
-    ALOGD("Success to load wifi driver !!!\n");
-    return 0;
+    do {
+        if (!usb_wifi_load_driver()) {
+            return 0;
+        }
+        wait_time++;
+        usleep(50000);
+        ALOGD("wait usb ok\n");
+    }while(wait_time<300);
+
+    ALOGE("Wifi load fail\n");
+    return -1;
 }
 
 int multi_wifi_unload_driver()
@@ -944,7 +1020,10 @@ int multi_wifi_unload_driver()
     usleep(200000);
     read_no(&dgle_no);
     ALOGE("Start to unload driver ...\n");
-    ALOGE("dgle_no 2= %d !\n", dgle_no);
+    if (strcmp(get_wifi_vendor_name(), "mtk") == 0) {
+        ifc_init();
+        ifc_down("wlan0");
+    }
     if (dongle_registerd[dgle_no].unload() != 0) {
         ALOGE("Failed to unload driver !\n");
         return -1;

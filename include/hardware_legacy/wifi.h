@@ -44,6 +44,7 @@ int wifi_unload_driver();
 int is_wifi_driver_loaded();
 
 
+const char *get_wifi_vendor_name();
 /**
  * Start supplicant.
  *

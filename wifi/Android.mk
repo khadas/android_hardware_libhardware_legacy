@@ -42,6 +42,10 @@ ifeq ($(USB_WIFI_SUPPORT),true)
 LOCAL_CFLAGS += -DUSB_WIFI_SUPPORT
 endif
 
+ifeq ($(BOARD_WIFI_VENDOR), mtk)
+LOCAL_CFLAGS += -DCONFIG_MTK_WIFI
+LOCAL_CFLAGS += -DUSB_WIFI_SUPPORT
+endif
 
 ifeq ($(MULTI_WIFI_SUPPORT),true)
 LOCAL_C_INCLUDES := $(KERNEL_HEADERS) \
@@ -56,7 +60,11 @@ LOCAL_SHARED_LIBRARIES += \
 			lib_driver_load
 
 LOCAL_SRC_FILES += wifi/multi_dongle.c
+endif
 
+
+ifeq ($(WIFI_DRIVER),qcom9377)
+LOCAL_CFLAGS += -DBOARD_WIFI_QCAM9377
 endif
 
 LOCAL_SRC_FILES += wifi/wifi.c

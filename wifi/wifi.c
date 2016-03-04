@@ -92,7 +92,7 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #define WIFI_DRIVER_FW_PATH_P2P		NULL
 #endif
 
-#ifdef BOARD_WIFI_REALTEK
+#if (defined BOARD_WIFI_REALTEK) || (defined CONFIG_MTK_WIFI) || (defined BOARD_WIFI_QCAM9377)
 #undef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA         "STA"
 #undef WIFI_DRIVER_FW_PATH_AP
@@ -129,8 +129,13 @@ static const char FIRMWARE_LOADER[]     = WIFI_FIRMWARE_LOADER;
 static const char DRIVER_PROP_NAME[]    = "wlan.driver.status";
 static const char SUPPLICANT_NAME[]     = "wpa_supplicant";
 static const char SUPP_PROP_NAME[]      = "init.svc.wpa_supplicant";
+#ifndef CONFIG_MTK_WIFI
 static const char P2P_SUPPLICANT_NAME[] = "p2p_supplicant";
 static const char P2P_PROP_NAME[]       = "init.svc.p2p_supplicant";
+#else
+static const char P2P_SUPPLICANT_NAME[] = "mtk_supplicant";
+static const char P2P_PROP_NAME[]       = "init.svc.mtk_supplicant";
+#endif
 #ifdef MULTI_WIFI_SUPPORT
 static const char BCM_SUPPLICANT_NAME[] = "bcm_supplicant";
 static const char BCM_PROP_NAME[]       = "init.svc.bcm_supplicant";
@@ -299,25 +304,25 @@ void set_wifi_power(int on)
     int fd;
     fd = open("/dev/wifi_power", O_RDWR);
     if (fd !=  - 1) {
-        if (on == 0) {
+        if (on == USB_POWER_UP) {
             if (ioctl (fd,USB_POWER_UP) < 0) {
                 printf("Set usb Wi-Fi power up error!!!\n");
 		close(fd);
                 return;
             }
-        }else if(on==1) {
+        }else if(on== USB_POWER_DOWN) {
             if (ioctl (fd,USB_POWER_DOWN)<0) {
                 printf("Set usb Wi-Fi power down error!!!\n");
 		close(fd);
                 return;
             }
-        }else if(on==2) {
+        }else if(on== SDIO_POWER_UP) {
             if (ioctl (fd,SDIO_POWER_UP)<0) {
                 printf("Set SDIO Wi-Fi power up error!!!\n");
 		close(fd);
                 return;
             }
-        }else if (on==3) {
+        }else if (on== SDIO_POWER_DOWN) {
             if (ioctl (fd,SDIO_POWER_DOWN)<0) {
                 printf("Set SDIO Wi-Fi power down error!!!\n");
 		close(fd);
@@ -336,10 +341,10 @@ int wifi_load_driver()
     DIR *d;
     struct dirent *de;
 #ifdef MULTI_WIFI_SUPPORT
-    set_wifi_power(2);
+    set_wifi_power(SDIO_POWER_UP);
 #else
 #ifdef USB_WIFI_SUPPORT
-    set_wifi_power(0);
+    set_wifi_power(USB_POWER_UP);
 #endif
 #endif
 #ifdef WIFI_DRIVER_MODULE_PATH
@@ -353,13 +358,9 @@ int wifi_load_driver()
 #ifdef MULTI_WIFI_SUPPORT
     if (multi_wifi_load_driver() < 0)
     {
-        set_wifi_power(3);
-        set_wifi_power(0);
-        if (multi_wifi_load_driver() < 0)
-        {
-            set_wifi_power(1);
-            return -1;
-        }
+        set_wifi_power(SDIO_POWER_DOWN);
+        ALOGE("MULTI wifi load fail\n");
+        return -1;
     }
 #else
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
@@ -407,13 +408,17 @@ int wifi_load_driver()
 int wifi_unload_driver()
 {
     usleep(200000); /* allow to finish interface down */
+#ifdef CONFIG_MTK_WIFI
+    ifc_init();
+    ifc_down("wlan0");
+#endif
 #ifdef WIFI_DRIVER_MODULE_PATH
 #ifdef MULTI_WIFI_SUPPORT
     if (multi_wifi_unload_driver() < 0)
     {
         ALOGE("Unload driver failed! \n");
 #ifdef USB_WIFI_SUPPORT
-        set_wifi_power(1);
+        set_wifi_power(USB_POWER_DOWN);
 #endif
         return -1;
     }
@@ -429,7 +434,7 @@ int wifi_unload_driver()
         usleep(500000); /* allow card removal */
         if (count) {
 #ifdef USB_WIFI_SUPPORT
-        set_wifi_power(1);
+        set_wifi_power(USB_POWER_DOWN);
 #endif
             return 0;
         }
@@ -446,9 +451,12 @@ int wifi_unload_driver()
 #endif
     property_set(DRIVER_PROP_NAME, "unloaded");
 #ifdef USB_WIFI_SUPPORT
-    set_wifi_power(1);
+    set_wifi_power(USB_POWER_DOWN);
 #endif
     return 0;
+#endif
+#ifdef USB_WIFI_SUPPORT
+    set_wifi_power(USB_POWER_DOWN);
 #endif
 return 0;
 }
@@ -582,6 +590,10 @@ int wifi_start_supplicant(int p2p_supported)
     const prop_info *pi;
     unsigned serial = 0, i;
 
+#ifdef CONFIG_MTK_WIFI
+    ifc_init();
+    ifc_up("wlan0");
+#endif
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
         if (usb_sdio_wifi == 0) {
@@ -589,6 +601,18 @@ int wifi_start_supplicant(int p2p_supported)
            strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
         else {
+           if (strcmp(get_wifi_vendor_name(), "mtk") == 0) {
+               ifc_init();
+               if (ifc_up("wlan0")) {
+                   wifi_unload_driver();
+                   usleep(200000);
+                   wifi_load_driver();
+                   if (ifc_up("wlan0")) {
+                       ALOGE("mtk wifi can not up, up wifi fail");
+                       return -1;
+                   }
+               }
+           }
            strcpy(supplicant_name, RTL_SUPPLICANT_NAME);
            strcpy(supplicant_prop_name, RTL_PROP_NAME);
         }
@@ -986,7 +1010,7 @@ const char *wifi_get_fw_path(int fw_type)
 #ifdef MULTI_WIFI_SUPPORT
     int fw_no=0;
     read_no(&fw_no);
-    if (fw_no >7)
+    if (strcmp(get_wifi_vendor_name(), "bcm") !=0)
         fw_no=8;
 #endif
     switch (fw_type) {
@@ -1018,13 +1042,11 @@ int wifi_change_fw_path(const char *fwpath)
     int fd;
     int ret = 0;
 #ifdef MULTI_WIFI_SUPPORT
-    int wifi_no=0;
-    read_no(&wifi_no);
-    if (wifi_no > 7)
+    if (strcmp(get_wifi_vendor_name(), "bcm") !=0)
         return ret;
 #endif
 
-#ifndef BOARD_WIFI_REALTEK
+#if (!defined BOARD_WIFI_REALTEK) && (!defined BOARD_WIFI_QCAM9377) && (!defined CONFIG_MTK_WIFI)
     if (!fwpath)
         return ret;
     fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
