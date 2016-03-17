@@ -459,7 +459,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"432256")) {
+    if (strstr(sdio_buf,"4356")) {
         ALOGE("Found 6356 !!!\n");
         usb_sdio_wifi=0;
         return 1;
