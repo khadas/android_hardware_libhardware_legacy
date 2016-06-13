@@ -68,6 +68,7 @@ static const char BCM6210_MODULE_ARG[]   ="firmware_path=/etc/wifi/40181/fw_bcm4
 static const char BCM6234_MODULE_ARG[]   ="firmware_path=/etc/wifi/6234/fw_bcm43341b0_ag.bin nvram_path=/etc/wifi/6234/nvram.txt";
 static const char BCM6354_MODULE_ARG[]   ="firmware_path=/etc/wifi/4354/fw_bcm4354a1_ag.bin nvram_path=/etc/wifi/4354/nvram_ap6354.txt";
 static const char BCM62x2_MODULE_ARG[]   ="firmware_path=/etc/wifi/62x2/fw_bcm43241b4_ag.bin nvram_path=/etc/wifi/62x2/nvram.txt";
+static const char BCM6255_MODULE_ARG[]   ="firmware_path=/etc/wifi/6255/fw_bcm43455c0_ag.bin nvram_path=/etc/wifi/6255/nvram.txt";
 static const char BCM6212_MODULE_ARG[]   ="firmware_path=/etc/wifi/6212/fw_bcm43438a0.bin nvram_path=/etc/wifi/6212/nvram.txt";
 static const char BCM6356_MODULE_ARG[]   ="firmware_path=/etc/wifi/4356/fw_bcm4356a2_ag.bin nvram_path=/etc/wifi/4356/nvram_ap6356.txt";
 
@@ -515,6 +516,53 @@ int search_bcm62x2(unsigned int x,unsigned int y)
 }
 
 
+int bcm6255_load_driver()
+{
+    if (wifi_insmod(BCM40183_MODULE_PATH, BCM6255_MODULE_ARG) !=0) {
+        ALOGE("Failed to insmod dhd ! \n");
+        return -1;
+    }
+    ALOGD("Success to insmod bcm6255 driver! \n");
+    return 0;
+}
+
+int bcm6255_unload_driver()
+{
+    if (wifi_rmmod(BCM40183_MODULE_NAME) != 0) {
+        ALOGE("Failed to rmmod bcm6255 driver ! \n");
+        return -1;
+    }
+    ALOGD("Success to rmmod bcm6255 driver ! \n");
+    return 0;
+}
+
+int search_bcm6255(unsigned int x,unsigned int y)
+{
+    int fd,len;
+    char sdio_buf[128];
+    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
+    FILE *fp = fopen(file_name,"r");
+    if (!fp) {
+        ALOGE("Open sdio wifi file failed !!! \n");
+        return 2;
+    }
+
+    memset(sdio_buf,0,sizeof(sdio_buf));
+    if (fread(sdio_buf, 1,128,fp) < 1) {
+        ALOGE("Read error for %m\n", errno);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    if (strstr(sdio_buf,"a9bf")) {
+        ALOGE("Found 6255 !!!\n");
+        usb_sdio_wifi=0;
+        return 1;
+    }
+    return 0;
+}
+
+
 int bcm6212_load_driver()
 {
     if (wifi_insmod(BCM40183_MODULE_PATH, BCM6212_MODULE_ARG) !=0) {
@@ -713,6 +761,7 @@ static const dongle_info dongle_registerd[]={\
 	{bcm6234_load_driver,bcm6234_unload_driver,search_bcm6234},\
 	{bcm6354_load_driver,bcm6354_unload_driver,search_bcm6354},\
 	{bcm62x2_load_driver,bcm62x2_unload_driver,search_bcm62x2},\
+	{bcm6255_load_driver,bcm6255_unload_driver,search_bcm6255},\
 	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
 	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
@@ -982,13 +1031,13 @@ const char *get_wifi_vendor_name()
 {
     int dgle_no= 0;
     read_no(&dgle_no);
-    if (dgle_no < 8) {
+    if (dgle_no < 9) {
         return "bcm";
     }
-    else if (7 <dgle_no && dgle_no < 16) {
+    else if (8 <dgle_no && dgle_no < 17) {
         return "realtek";
     }
-    else if (dgle_no > 15) {
+    else if (dgle_no > 16) {
         return "mtk";
     }
     ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");

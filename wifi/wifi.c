@@ -115,6 +115,7 @@ char wifi_driver_fw_path[9][3][60]={\
         {"/etc/wifi/6234/fw_bcm43341b0_ag.bin","/etc/wifi/6234/fw_bcm43341b0_ag_apsta.bin","/etc/wifi/6234/fw_bcm43341b0_ag_p2p.bin"},
         {"/etc/wifi/4354/fw_bcm4354a1_ag.bin","/etc/wifi/4354/fw_bcm4354a1_ag_apsta.bin","/etc/wifi/4354/fw_bcm4354a1_ag_p2p.bin"},
         {"/etc/wifi/62x2/fw_bcm43241b4_ag.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_apsta.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_p2p.bin"},
+        {"/etc/wifi/6255/fw_bcm43455c0_ag.bin","/etc/wifi/6255/fw_bcm43455c0_ag_apsta.bin","/etc/wifi/6255/fw_bcm43455c0_ag_p2p.bin"},
         {"/etc/wifi/6212/fw_bcm43438a0.bin","/etc/wifi/6212/fw_bcm43438a0_apsta.bin","/etc/wifi/6212/fw_bcm43438a0_p2p.bin"},
 	{"/etc/wifi/4356/fw_bcm4356a2_ag.bin","/etc/wifi/4356/fw_bcm4356a2_ag_apsta.bin","/etc/wifi/4356/fw_bcm4356a2_ag_p2p.bin"},
         {"STA","AP","P2P"}
@@ -1025,7 +1026,7 @@ const char *wifi_get_fw_path(int fw_type)
     int fw_no=0;
     read_no(&fw_no);
     if (strcmp(get_wifi_vendor_name(), "bcm") !=0)
-        fw_no=8;
+        fw_no=9;
 #endif
     switch (fw_type) {
     case WIFI_GET_FW_PATH_STA:
