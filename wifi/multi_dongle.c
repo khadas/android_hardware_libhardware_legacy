@@ -99,6 +99,12 @@ extern int eu8188_load_driver();
 extern int search_8188eu(unsigned  int vid,unsigned  int pid);
 extern int eu8188_unload_driver();
 
+extern int au8821_load_driver();
+extern int search_8821au(unsigned  int vid,unsigned  int pid);
+extern int au8821_unload_driver();
+extern int bu8723_load_driver();
+extern int search_8723bu(unsigned  int vid,unsigned  int pid);
+extern int bu8723_unload_driver();
 extern int ftv8188_load_driver();
 extern int search_8188ftv(unsigned  int vid,unsigned  int pid);
 extern int ftv8188_unload_driver();
@@ -768,6 +774,8 @@ static const dongle_info dongle_registerd[]={\
 	{es8189_load_driver,es8189_unload_driver,search_es8189},\
 	{fs8189_load_driver,fs8189_unload_driver,search_fs8189},\
 	{eu8188_load_driver,eu8188_unload_driver,search_8188eu},\
+	{bu8723_load_driver,bu8723_unload_driver,search_8723bu},\
+	{au8821_load_driver,au8821_unload_driver,search_8821au},\
 	{ftv8188_load_driver,ftv8188_unload_driver,search_8188ftv},\
 	{cu8192_load_driver,cu8192_unload_driver,search_cu},\
 	{du8192_load_driver,du8192_unload_driver,search_du},\
@@ -952,8 +960,9 @@ int usb_wifi_load_driver()
     usb_init();
     usb_find_busses();
     usb_find_devices();
-    if (usb_busses == NULL) {
-        ALOGE("usb_busses is NULL !!!\n");
+    if (is_driver_loaded()) {
+        ALOGD("Wi-Fi driver has loaded !");
+        return 0;
     }
     for (bus = usb_busses; bus; bus = bus->next) {
         if (bus->root_dev && !verbose1) {
@@ -963,11 +972,6 @@ int usb_wifi_load_driver()
             for (dev = bus->devices; dev; dev = dev->next)
                 print_device(dev, 0);
         }
-    }
-
-    if (is_driver_loaded()) {
-        ALOGD("Wi-Fi driver has loaded !");
-        return 0;
     }
     usb_vidpid_count = indent_usb_table;
     indent_usb_table = 0;
@@ -1034,10 +1038,10 @@ const char *get_wifi_vendor_name()
     if (dgle_no < 9) {
         return "bcm";
     }
-    else if (8 <dgle_no && dgle_no < 17) {
+    else if (8 <dgle_no && dgle_no < 19) {
         return "realtek";
     }
-    else if (dgle_no > 16) {
+    else if (dgle_no > 18) {
         return "mtk";
     }
     ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");

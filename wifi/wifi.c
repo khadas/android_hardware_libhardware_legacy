@@ -152,8 +152,6 @@ static const char SUPP_CONFIG_FILE[]    = "/data/misc/wifi/wpa_supplicant.conf";
 static const char P2P_CONFIG_FILE[]     = "/data/misc/wifi/p2p_supplicant.conf";
 #ifdef MULTI_WIFI_SUPPORT
 static const char BCM_SUPP_CONFIG_TEMPLATE[]= "/system/etc/wifi/bcm_supplicant.conf";
-static const char BCM_SUPP_CONFIG_FILE[]    = "/data/misc/wifi/bcm_supplicant.conf";
-static const char BCM_P2P_CONFIG_FILE[]     = "/data/misc/wifi/bcm_p2p_supplicant.conf";
 #endif
 static const char CONTROL_IFACE_PATH[]  = "/data/misc/wifi/sockets";
 static const char MODULE_FILE[]         = "/proc/modules";
@@ -541,7 +539,7 @@ int ensure_config_file_exists(const char *config_file)
         return -1;
     }
 #ifdef MULTI_WIFI_SUPPORT
-    if (usb_sdio_wifi == 0)
+    if (strcmp(get_wifi_vendor_name(), "bcm") == 0)
      {
         srcfd = TEMP_FAILURE_RETRY(open(BCM_SUPP_CONFIG_TEMPLATE, O_RDONLY));
         if (srcfd < 0) {
@@ -611,7 +609,7 @@ int wifi_start_supplicant(int p2p_supported)
 #endif
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
-        if (usb_sdio_wifi == 0) {
+        if (strcmp(get_wifi_vendor_name(), "bcm") == 0) {
            strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
            strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
@@ -636,23 +634,10 @@ int wifi_start_supplicant(int p2p_supported)
            strcpy(supplicant_prop_name, P2P_PROP_NAME);
 #endif
        /* Ensure p2p config file is created */
-#ifdef MULTI_WIFI_SUPPORT
-    if (usb_sdio_wifi == 0) {
-        if (ensure_config_file_exists(BCM_P2P_CONFIG_FILE) < 0) {
-            ALOGE("Failed to create a p2p config file");
-            return -1;
-        }
-    }
-    else {
-#endif
         if (ensure_config_file_exists(P2P_CONFIG_FILE) < 0) {
             ALOGE("Failed to create a p2p config file");
             return -1;
         }
-
-#ifdef MULTI_WIFI_SUPPORT
-    }
-#endif
 
     } else {
         strcpy(supplicant_name, SUPPLICANT_NAME);
@@ -664,25 +649,11 @@ int wifi_start_supplicant(int p2p_supported)
             && strcmp(supp_status, "running") == 0) {
         return 0;
     }
-
-#ifdef MULTI_WIFI_SUPPORT
-    if (usb_sdio_wifi == 0) {
         /* Before starting the daemon, make sure its config file exists */
-        if (ensure_config_file_exists(BCM_SUPP_CONFIG_FILE) < 0) {
-            ALOGE("Wi-Fi will not be enabled");
-            return -1;
-        }
+    if (ensure_config_file_exists(SUPP_CONFIG_FILE) < 0) {
+       ALOGE("Wi-Fi will not be enabled");
+       return -1;
     }
-    else {
-#endif
-        /* Before starting the daemon, make sure its config file exists */
-        if (ensure_config_file_exists(SUPP_CONFIG_FILE) < 0) {
-           ALOGE("Wi-Fi will not be enabled");
-           return -1;
-        }
-#ifdef MULTI_WIFI_SUPPORT
-    }
-#endif
 
     if (ensure_entropy_file_exists() < 0) {
         ALOGE("Wi-Fi entropy file was not created");
@@ -739,7 +710,7 @@ int wifi_stop_supplicant(int p2p_supported)
 
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
-        if (usb_sdio_wifi == 0) {
+        if (strcmp(get_wifi_vendor_name(), "bcm") == 0) {
             strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
             strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
