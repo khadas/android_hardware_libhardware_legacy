@@ -113,6 +113,10 @@ extern int eu8192_load_driver();
 extern int search_8192eu(unsigned  int vid,unsigned  int pid);
 extern int eu8192_unload_driver();
 
+extern int es8192_load_driver();
+extern int search_es8192(int x, int y);
+extern int es8192_unload_driver();
+
 extern int mt7601_load_driver();
 extern int search_mt7601(unsigned  int vid,unsigned  int pid);
 extern int mt7601_unload_driver();
@@ -773,6 +777,7 @@ static const dongle_info dongle_registerd[]={\
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
 	{es8189_load_driver,es8189_unload_driver,search_es8189},\
 	{fs8189_load_driver,fs8189_unload_driver,search_fs8189},\
+	{es8192_load_driver,es8192_unload_driver,search_es8192},\
 	{eu8188_load_driver,eu8188_unload_driver,search_8188eu},\
 	{bu8723_load_driver,bu8723_unload_driver,search_8723bu},\
 	{au8821_load_driver,au8821_unload_driver,search_8821au},\
@@ -1006,7 +1011,7 @@ int sdio_wifi_load_driver()
     int i;
     int ret =0;
     load_dongle_index = -1;
-    for (i=0;i < 11; i++) {
+    for (i=0;i < 13; i++) {
         ret=dongle_registerd[i].search(0,0);
         if (ret ==1) {
             load_dongle_index = i;
@@ -1038,10 +1043,10 @@ const char *get_wifi_vendor_name()
     if (dgle_no < 9) {
         return "bcm";
     }
-    else if (8 <dgle_no && dgle_no < 19) {
+    else if (8 <dgle_no && dgle_no < 20) {
         return "realtek";
     }
-    else if (dgle_no > 18) {
+    else if (dgle_no > 19) {
         return "mtk";
     }
     ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");
