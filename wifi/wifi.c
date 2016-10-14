@@ -34,14 +34,13 @@
 #include "cutils/memory.h"
 #include "cutils/misc.h"
 #include "cutils/properties.h"
+#include "netutils/ifc.h"
 #include "private/android_filesystem_config.h"
 
 #define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
 #include <sys/_system_properties.h>
 
 extern int do_dhcp();
-extern int ifc_init();
-extern void ifc_close();
 extern char *dhcp_lasterror();
 extern void get_dhcp_info();
 extern int init_module(void *, unsigned long, const char *);
@@ -129,6 +128,12 @@ static const char DRIVER_MODULE_NAME[]  = WIFI_DRIVER_MODULE_NAME;
 static const char DRIVER_MODULE_TAG[]   = WIFI_DRIVER_MODULE_NAME " ";
 static const char DRIVER_MODULE_PATH[]  = WIFI_DRIVER_MODULE_PATH;
 static const char DRIVER_MODULE_ARG[]   = WIFI_DRIVER_MODULE_ARG;
+static const char CFG80211_MODULE_TAG[]   = "cfg80211";
+static const char QCN80211_MODULE_PATH[]  = "/system/lib/qcn80211.ko";
+static const char CFG80211_MODULE_PATH[]  = "/system/lib/cfg80211.ko";
+static const char CFG80211_MODULE_ARG[]   = "";
+static const char COMPAT_MODULE_PATH[]  = "/system/lib/compat.ko";
+static const char COMPAT_MODULE_ARG[]   = "";
 #endif
 static const char FIRMWARE_LOADER[]     = WIFI_FIRMWARE_LOADER;
 static const char DRIVER_PROP_NAME[]    = "wlan.driver.status";
@@ -257,6 +262,30 @@ int wifi_change_driver_state(const char *state)
 }
 #endif
 
+static int is_cfg80211_loaded() {
+    FILE *proc;
+    char line[sizeof(CFG80211_MODULE_TAG)+10];
+
+    /*
+     * If the property says the driver is loaded, check to
+     * make sure that the property setting isn't just left
+     * over from a previous manual shutdown or a runtime
+     * crash.
+     */
+    if ((proc = fopen("/proc/modules", "r")) == NULL) {
+        ALOGW("Could not open %s", strerror(errno));
+        return 0;
+    }
+    while ((fgets(line, sizeof(line), proc)) != NULL) {
+        if (strncmp(line, CFG80211_MODULE_TAG, strlen(CFG80211_MODULE_TAG)) == 0) {
+            fclose(proc);
+            return 1;
+        }
+    }
+    fclose(proc);
+    return 0;
+}
+
 int is_wifi_driver_loaded() {
     char driver_status[PROPERTY_VALUE_MAX];
 #ifdef WIFI_DRIVER_MODULE_PATH
@@ -343,12 +372,8 @@ int wifi_load_driver()
     FILE *fp        = NULL;
     DIR *d;
     struct dirent *de;
-#ifdef MULTI_WIFI_SUPPORT
-    set_wifi_power(SDIO_POWER_UP);
-#else
-#ifdef USB_WIFI_SUPPORT
+#if (!defined MULTI_WIFI_SUPPORT) && (defined USB_WIFI_SUPPORT)
     set_wifi_power(USB_POWER_UP);
-#endif
 #endif
 #ifdef WIFI_DRIVER_MODULE_PATH
     char driver_status[PROPERTY_VALUE_MAX];
@@ -366,6 +391,17 @@ int wifi_load_driver()
         return -1;
     }
 #else
+    if (!is_cfg80211_loaded()) {
+#ifdef BOARD_WIFI_QCAM9377
+        if (insmod(COMPAT_MODULE_PATH, COMPAT_MODULE_ARG) < 0)
+            return -1;
+        if (insmod(QCN80211_MODULE_PATH, CFG80211_MODULE_ARG) < 0)
+            return -1;
+#else
+        if (insmod(CFG80211_MODULE_PATH, CFG80211_MODULE_ARG) < 0)
+            return -1;
+#endif
+    }
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
         return -1;
 
@@ -425,9 +461,9 @@ int wifi_unload_driver()
     if (multi_wifi_unload_driver() < 0)
     {
         ALOGE("Unload driver failed! \n");
-#ifdef USB_WIFI_SUPPORT
+//#ifdef USB_WIFI_SUPPORT
         set_wifi_power(USB_POWER_DOWN);
-#endif
+//#endif
         return -1;
     }
 
@@ -441,9 +477,9 @@ int wifi_unload_driver()
         }
         usleep(500000); /* allow card removal */
         if (count) {
-#ifdef USB_WIFI_SUPPORT
+//#ifdef USB_WIFI_SUPPORT
         set_wifi_power(USB_POWER_DOWN);
-#endif
+//#endif
 
 #ifdef BCM_USB_WIFI
         enable_bcmdl(0);
@@ -463,14 +499,14 @@ int wifi_unload_driver()
     }
 #endif
     property_set(DRIVER_PROP_NAME, "unloaded");
-#ifdef USB_WIFI_SUPPORT
+//#ifdef USB_WIFI_SUPPORT
     set_wifi_power(USB_POWER_DOWN);
-#endif
+//#endif
     return 0;
 #endif
-#ifdef USB_WIFI_SUPPORT
+//#ifdef USB_WIFI_SUPPORT
     set_wifi_power(USB_POWER_DOWN);
-#endif
+//#endif
 return 0;
 }
 

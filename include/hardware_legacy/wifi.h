@@ -28,6 +28,8 @@ extern "C" {
  */
 int wifi_load_driver();
 
+void set_wifi_power(int on);
+
 /**
  * Unload the Wi-Fi driver.
  *

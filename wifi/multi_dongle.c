@@ -29,6 +29,8 @@
 #include "cutils/log.h"
 #include "cutils/memory.h"
 #include "cutils/properties.h"
+#include "cutils/misc.h"
+#include "netutils/ifc.h"
 #include "private/android_filesystem_config.h"
 #ifdef HAVE_LIBC_SYSTEM_PROPERTIES
 #define _REALLY_INCLUDE_SYS__SYSTEM_PROPERTIES_H_
@@ -36,7 +38,7 @@
 #endif
 
 
-#include "usb.h"
+#include "../../../external/libusb/libusb-0.1.12/usb.h"
 
 static const char SYSFS_CLASS_NET[]     = "/sys/class/net";
 static const char SYS_MOD_NAME_DIR[]    = "device/driver/module";
@@ -54,10 +56,21 @@ static const char BS8189_MODULE_TAG[]   = "8189es";
 static const char BS8189_MODULE_PATH[]  = "/system/lib/8189es.ko";
 static const char BS8189_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
 
+static const char CFG80211_MODULE_TAG[]   = "cfg80211";
+static const char QCN80211_MODULE_PATH[]  = "/system/lib/qcn80211.ko";
+static const char CFG80211_MODULE_PATH[]  = "/system/lib/cfg80211.ko";
+static const char CFG80211_MODULE_ARG[]   = "";
+static const char COMPAT_MODULE_PATH[]  = "/system/lib/compat.ko";
+static const char COMPAT_MODULE_ARG[]   = "";
+
 static const char BS8822_MODULE_NAME[]  = "8822bs";
 static const char BS8822_MODULE_TAG[]   = "8822bs";
 static const char BS8822_MODULE_PATH[]  = "/system/lib/8822bs.ko";
 static const char BS8822_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
+#define USB_POWER_UP    _IO('m',1)
+#define USB_POWER_DOWN  _IO('m',2)
+#define SDIO_POWER_UP    _IO('m',3)
+#define SDIO_POWER_DOWN  _IO('m',4)
 
 static const char FS8189_MODULE_NAME[]  = "8189fs";
 static const char FS8189_MODULE_TAG[]   = "8189fs";
@@ -77,6 +90,8 @@ static const char BCM6255_MODULE_ARG[]   ="firmware_path=/etc/wifi/6255/fw_bcm43
 static const char BCM6212_MODULE_ARG[]   ="firmware_path=/etc/wifi/6212/fw_bcm43438a0.bin nvram_path=/etc/wifi/6212/nvram.txt";
 static const char BCM6356_MODULE_ARG[]   ="firmware_path=/etc/wifi/4356/fw_bcm4356a2_ag.bin nvram_path=/etc/wifi/4356/nvram_ap6356.txt";
 
+extern int init_module(void *, unsigned long, const char *);
+extern int delete_module(const char *, unsigned int);
 struct wifi_vid_pid {
     unsigned short int vid;
     unsigned short int pid;
@@ -121,6 +136,14 @@ extern int eu8192_unload_driver();
 extern int es8192_load_driver();
 extern int search_es8192(int x, int y);
 extern int es8192_unload_driver();
+
+extern int qc9377_load_driver();
+extern int search_qc9377(int x, int y);
+extern int qc9377_unload_driver();
+
+extern int qc6174_load_driver();
+extern int search_qc6174(int x, int y);
+extern int qc6174_unload_driver();
 
 extern int mt7601_load_driver();
 extern int search_mt7601(unsigned  int vid,unsigned  int pid);
@@ -475,7 +498,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"432256")) {
+    if (strstr(sdio_buf,"4356")) {
         ALOGE("Found 6356 !!!\n");
         usb_sdio_wifi=0;
         return 1;
@@ -698,7 +721,7 @@ int search_es8189(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -745,7 +768,7 @@ int search_bs8822(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -754,7 +777,7 @@ int search_bs8822(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"b2222822")) {
+    if (strstr(sdio_buf,"b822")) {
         ALOGE("Found 8822bs !!!\n");
         usb_sdio_wifi=1;
         return 1;
@@ -790,7 +813,7 @@ int search_fs8189(unsigned int x,unsigned int y)
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGE("Open sdio wifi file failed !!! \n");
-        return -1;
+        return 2;
     }
     memset(sdio_buf,0,sizeof(sdio_buf));
     if (fread(sdio_buf, 1,128,fp) < 1) {
@@ -826,6 +849,8 @@ static const dongle_info dongle_registerd[]={\
 	{bcm6255_load_driver,bcm6255_unload_driver,search_bcm6255},\
 	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
 	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
+	{qc9377_load_driver,qc9377_unload_driver,search_qc9377},\
+	{qc6174_load_driver,qc6174_unload_driver,search_qc6174},\
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
 	{es8189_load_driver,es8189_unload_driver,search_es8189},\
 	{bs8822_load_driver,bs8822_unload_driver,search_bs8822},\
@@ -1009,6 +1034,54 @@ int is_driver_loaded()
     }
 }
 
+
+static int is_cfg80211_loaded() {
+    FILE *proc;
+    char line[sizeof(CFG80211_MODULE_TAG)+10];
+
+    /*
+     * If the property says the driver is loaded, check to
+     * make sure that the property setting isn't just left
+     * over from a previous manual shutdown or a runtime
+     * crash.
+     */
+    if ((proc = fopen("/proc/modules", "r")) == NULL) {
+        ALOGW("Could not open %s", strerror(errno));
+        return 0;
+    }
+    while ((fgets(line, sizeof(line), proc)) != NULL) {
+        if (strncmp(line, CFG80211_MODULE_TAG, strlen(CFG80211_MODULE_TAG)) == 0) {
+            fclose(proc);
+            return 1;
+        }
+    }
+    fclose(proc);
+    return 0;
+}
+
+int qcn_cfg80211_load_driver()
+{
+	if (wifi_insmod(COMPAT_MODULE_PATH, COMPAT_MODULE_ARG) !=0) {
+        ALOGE("Failed to insmod qcn compat ko ! \n");
+        return -1;
+    }
+	if (wifi_insmod(QCN80211_MODULE_PATH, CFG80211_MODULE_ARG) !=0) {
+        ALOGE("Failed to insmod qcn cfg80211 ! \n");
+        return -1;
+    }
+    ALOGD("Success to insmod qcn cfg80211 driver! \n");
+    return 0;
+}
+
+int cfg80211_load_driver()
+{
+    if (wifi_insmod(CFG80211_MODULE_PATH, CFG80211_MODULE_ARG) !=0) {
+        ALOGE("Failed to insmod  cfg80211 ! \n");
+        return -1;
+    }
+    ALOGD("Success to insmod cfg80211 driver! \n");
+    return 0;
+}
 int usb_wifi_load_driver()
 {
     int i,j;
@@ -1034,11 +1107,13 @@ int usb_wifi_load_driver()
     usb_vidpid_count = indent_usb_table;
     indent_usb_table = 0;
     load_dongle_index = -1;
-    for (j = 11;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
+    for (j = 16;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
         for (i = 0;i < usb_vidpid_count; i ++) {
             if (dongle_registerd[j].search(usb_table[i].vid,usb_table[i].pid) == 1) {
                 usb_sdio_wifi=1;
                 write_no(&j);
+                if (!is_cfg80211_loaded())
+                    cfg80211_load_driver();
                 cur_vid = usb_table[i].vid;
                 cur_pid = usb_table[i].pid;
                 load_dongle_index = j;
@@ -1064,11 +1139,17 @@ int sdio_wifi_load_driver()
     int i;
     int ret =0;
     load_dongle_index = -1;
-    for (i=0;i < 13; i++) {
+    for (i=0;i < 16; i++) {
         ret=dongle_registerd[i].search(0,0);
         if (ret ==1) {
             load_dongle_index = i;
             write_no(&i);
+            if (!is_cfg80211_loaded()) {
+                if (strcmp(get_wifi_vendor_name(), "qcn") == 0)
+                    qcn_cfg80211_load_driver();
+                else
+                    cfg80211_load_driver();
+        }
             ALOGD("The matched dongle no. is %d\n", i);
             if (dongle_registerd[i].load() != 0) {
                 ALOGD("Load Wi-Fi driver error !!!\n");
@@ -1096,10 +1177,13 @@ const char *get_wifi_vendor_name()
     if (dgle_no < 9) {
         return "bcm";
     }
-    else if (8 <dgle_no && dgle_no < 21) {
+    else if (8 <dgle_no && dgle_no < 11) {
+        return "qcn";
+    }
+    else if (10 <dgle_no && dgle_no < 23) {
         return "realtek";
     }
-    else if (dgle_no > 20) {
+    else if (dgle_no > 22) {
         return "mtk";
     }
     ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");
@@ -1109,6 +1193,25 @@ const char *get_wifi_vendor_name()
 int multi_wifi_load_driver()
 {
     int wait_time=0;
+    int dgle_no=0;
+    if (!read_no(&dgle_no)) {
+        if (!is_cfg80211_loaded()) {
+            if (strcmp(get_wifi_vendor_name(), "qcn") == 0)
+                qcn_cfg80211_load_driver();
+            else
+                cfg80211_load_driver();
+        }
+        if (dgle_no > 15)
+            set_wifi_power(USB_POWER_UP);
+        ALOGD("The matched dgle_no. is %d\n", dgle_no);
+        if (dongle_registerd[dgle_no].load() != 0) {
+                ALOGD("Load Wi-Fi driver error !!!\n");
+                return -1;
+        }
+        ALOGD("wifi driver load ok\n");
+        return 0;
+    }
+    set_wifi_power(SDIO_POWER_UP);
     if (!sdio_wifi_load_driver()) {
         return 0;
     }
