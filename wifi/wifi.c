@@ -262,6 +262,7 @@ int wifi_change_driver_state(const char *state)
 }
 #endif
 
+#ifdef WIFI_DRIVER_MODULE_PATH
 static int is_cfg80211_loaded() {
     FILE *proc;
     char line[sizeof(CFG80211_MODULE_TAG)+10];
@@ -285,6 +286,7 @@ static int is_cfg80211_loaded() {
     fclose(proc);
     return 0;
 }
+#endif
 
 int is_wifi_driver_loaded() {
     char driver_status[PROPERTY_VALUE_MAX];
