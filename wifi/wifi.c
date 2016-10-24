@@ -107,18 +107,16 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #define WIFI_DRIVER_FW_PATH_PARAM	"/sys/module/wlan/parameters/fwpath"
 #endif
 #ifdef MULTI_WIFI_SUPPORT
-char wifi_driver_fw_path[9][3][60]={\
-	{"/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_apsta.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_p2p.bin"},
-        {"/etc/wifi/40181/fw_bcm40181a2.bin","/etc/wifi/40181/fw_bcm40181a2_apsta.bin","/etc/wifi/40181/fw_bcm40181a2_p2p.bin"},
-        {"/etc/wifi/6335/fw_bcm4339a0_ag.bin","/etc/wifi/6335/fw_bcm4339a0_ag_apsta.bin","/etc/wifi/6335/fw_bcm4339a0_ag_p2p.bin"},
-        {"/etc/wifi/6234/fw_bcm43341b0_ag.bin","/etc/wifi/6234/fw_bcm43341b0_ag_apsta.bin","/etc/wifi/6234/fw_bcm43341b0_ag_p2p.bin"},
-        {"/etc/wifi/4354/fw_bcm4354a1_ag.bin","/etc/wifi/4354/fw_bcm4354a1_ag_apsta.bin","/etc/wifi/4354/fw_bcm4354a1_ag_p2p.bin"},
-        {"/etc/wifi/62x2/fw_bcm43241b4_ag.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_apsta.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_p2p.bin"},
-        {"/etc/wifi/6255/fw_bcm43455c0_ag.bin","/etc/wifi/6255/fw_bcm43455c0_ag_apsta.bin","/etc/wifi/6255/fw_bcm43455c0_ag_p2p.bin"},
-        {"/etc/wifi/6212/fw_bcm43438a0.bin","/etc/wifi/6212/fw_bcm43438a0_apsta.bin","/etc/wifi/6212/fw_bcm43438a0_p2p.bin"},
-	{"/etc/wifi/4356/fw_bcm4356a2_ag.bin","/etc/wifi/4356/fw_bcm4356a2_ag_apsta.bin","/etc/wifi/4356/fw_bcm4356a2_ag_p2p.bin"},
-        {"STA","AP","P2P"}
-};
+static const char *bcm6330_fw_path[] = {"/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_apsta.bin","/etc/wifi/AP6330/Wi-Fi/fw_bcm40183b2_p2p.bin"};
+static const char *bcm6210_fw_path[] = {"/etc/wifi/40181/fw_bcm40181a2.bin","/etc/wifi/40181/fw_bcm40181a2_apsta.bin","/etc/wifi/40181/fw_bcm40181a2_p2p.bin"};
+static const char *bcm6335_fw_path[] = {"/etc/wifi/6335/fw_bcm4339a0_ag.bin","/etc/wifi/6335/fw_bcm4339a0_ag_apsta.bin","/etc/wifi/6335/fw_bcm4339a0_ag_p2p.bin"};
+static const char *bcm6234_fw_path[] = {"/etc/wifi/6234/fw_bcm43341b0_ag.bin","/etc/wifi/6234/fw_bcm43341b0_ag_apsta.bin","/etc/wifi/6234/fw_bcm43341b0_ag_p2p.bin"};
+static const char *bcm4354_fw_path[] = {"/etc/wifi/4354/fw_bcm4354a1_ag.bin","/etc/wifi/4354/fw_bcm4354a1_ag_apsta.bin","/etc/wifi/4354/fw_bcm4354a1_ag_p2p.bin"};
+static const char *bcm62x2_fw_path[] = {"/etc/wifi/62x2/fw_bcm43241b4_ag.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_apsta.bin","/etc/wifi/62x2/fw_bcm43241b4_ag_p2p.bin"};
+static const char *bcm6255_fw_path[] = {"/etc/wifi/6255/fw_bcm43455c0_ag.bin","/etc/wifi/6255/fw_bcm43455c0_ag_apsta.bin","/etc/wifi/6255/fw_bcm43455c0_ag_p2p.bin"};
+static const char *bcm6212_fw_path[] = {"/etc/wifi/6212/fw_bcm43438a0.bin","/etc/wifi/6212/fw_bcm43438a0_apsta.bin","/etc/wifi/6212/fw_bcm43438a0_p2p.bin"};
+static const char *bcm4356_fw_path[] = {"/etc/wifi/4356/fw_bcm4356a2_ag.bin","/etc/wifi/4356/fw_bcm4356a2_ag_apsta.bin","/etc/wifi/4356/fw_bcm4356a2_ag_p2p.bin"};
+static const char *wifi_driver_fw_path[]={"STA","AP","P2P"};
 #endif
 #define WIFI_DRIVER_LOADER_DELAY	1000000
 
@@ -386,12 +384,16 @@ int wifi_load_driver()
     }
 
 #ifdef MULTI_WIFI_SUPPORT
+    property_set("ctl.start", "bcmdl"); /*the service is for bcm usb wifi*/
     if (multi_wifi_load_driver() < 0)
     {
         set_wifi_power(SDIO_POWER_DOWN);
+        property_set("ctl.stop", "bcmdl");
         ALOGE("MULTI wifi load fail\n");
         return -1;
     }
+    if (strcmp(get_wifi_vendor_name(), "bcm43569") != 0)/*the service is for bcm usb wifi*/
+        property_set("ctl.stop", "bcmdl");
 #else
     if (!is_cfg80211_loaded()) {
 #ifdef BOARD_WIFI_QCAM9377
@@ -463,12 +465,11 @@ int wifi_unload_driver()
     if (multi_wifi_unload_driver() < 0)
     {
         ALOGE("Unload driver failed! \n");
-//#ifdef USB_WIFI_SUPPORT
         set_wifi_power(USB_POWER_DOWN);
-//#endif
         return -1;
     }
-
+    if (strcmp(get_wifi_vendor_name(), "bcm43569") != 0)/*the service is for bcm usb wifi*/
+        property_set("ctl.stop", "bcmdl");
 #else
     if (rmmod(DRIVER_MODULE_NAME) == 0) {
         int count = 20; /* wait at most 10 seconds for completion */
@@ -479,9 +480,7 @@ int wifi_unload_driver()
         }
         usleep(500000); /* allow card removal */
         if (count) {
-//#ifdef USB_WIFI_SUPPORT
         set_wifi_power(USB_POWER_DOWN);
-//#endif
 
 #ifdef BCM_USB_WIFI
         enable_bcmdl(0);
@@ -501,14 +500,10 @@ int wifi_unload_driver()
     }
 #endif
     property_set(DRIVER_PROP_NAME, "unloaded");
-//#ifdef USB_WIFI_SUPPORT
     set_wifi_power(USB_POWER_DOWN);
-//#endif
     return 0;
 #endif
-//#ifdef USB_WIFI_SUPPORT
     set_wifi_power(USB_POWER_DOWN);
-//#endif
 return 0;
 }
 
@@ -577,7 +572,7 @@ int ensure_config_file_exists(const char *config_file)
         return -1;
     }
 #ifdef MULTI_WIFI_SUPPORT
-    if (strcmp(get_wifi_vendor_name(), "bcm") == 0)
+    if (strncmp(get_wifi_vendor_name(), "bcm", 3) == 0)
      {
         srcfd = TEMP_FAILURE_RETRY(open(BCM_SUPP_CONFIG_TEMPLATE, O_RDONLY));
         if (srcfd < 0) {
@@ -647,12 +642,12 @@ int wifi_start_supplicant(int p2p_supported)
 #endif
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
-        if (strcmp(get_wifi_vendor_name(), "bcm") == 0) {
+        if (strncmp(get_wifi_vendor_name(), "bcm", 3) == 0) {
            strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
            strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
         else {
-           if (strcmp(get_wifi_vendor_name(), "mtk") == 0) {
+           if (strncmp(get_wifi_vendor_name(), "mtk", 3) == 0) {
                ifc_init();
                if (ifc_up("wlan0")) {
                    wifi_unload_driver();
@@ -748,7 +743,7 @@ int wifi_stop_supplicant(int p2p_supported)
 
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
-        if (strcmp(get_wifi_vendor_name(), "bcm") == 0) {
+        if (strncmp(get_wifi_vendor_name(), "bcm", 3) == 0) {
             strcpy(supplicant_name, BCM_SUPPLICANT_NAME);
             strcpy(supplicant_prop_name, BCM_PROP_NAME);
         }
@@ -1031,28 +1026,82 @@ int wifi_command(const char *command, char *reply, size_t *reply_len)
 
 const char *wifi_get_fw_path(int fw_type)
 {
-#ifdef MULTI_WIFI_SUPPORT
-    int fw_no=0;
-    read_no(&fw_no);
-    if (strcmp(get_wifi_vendor_name(), "bcm") !=0)
-        fw_no=9;
-#endif
     switch (fw_type) {
     case WIFI_GET_FW_PATH_STA:
 #ifdef MULTI_WIFI_SUPPORT
-        return wifi_driver_fw_path[fw_no][0];
+        if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0) {
+            return wifi_driver_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6330") ==0) {
+            return bcm6330_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6210") ==0) {
+            return bcm6210_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6335") ==0) {
+            return bcm6335_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6234") ==0) {
+            return bcm6234_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4354") ==0) {
+            return bcm4354_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm62x2") ==0) {
+            return bcm62x2_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6255") ==0) {
+            return bcm6255_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
+            return bcm6212_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+            return bcm4356_fw_path[0];
+        }
 #else
         return WIFI_DRIVER_FW_PATH_STA;
 #endif
     case WIFI_GET_FW_PATH_AP:
 #ifdef MULTI_WIFI_SUPPORT
-        return wifi_driver_fw_path[fw_no][1];
+        if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0) {
+            return wifi_driver_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6330") ==0) {
+            return bcm6330_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6210") ==0) {
+            return bcm6210_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6335") ==0) {
+            return bcm6335_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6234") ==0) {
+            return bcm6234_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4354") ==0) {
+            return bcm4354_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm62x2") ==0) {
+            return bcm62x2_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6255") ==0) {
+            return bcm6255_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
+            return bcm6212_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+            return bcm4356_fw_path[1];
+        }
 #else
         return WIFI_DRIVER_FW_PATH_AP;
 #endif
     case WIFI_GET_FW_PATH_P2P:
 #ifdef MULTI_WIFI_SUPPORT
-        return wifi_driver_fw_path[fw_no][2];
+        if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0) {
+            return wifi_driver_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6330") ==0) {
+            return bcm6330_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6210") ==0) {
+            return bcm6210_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6335") ==0) {
+            return bcm6335_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6234") ==0) {
+            return bcm6234_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4354") ==0) {
+            return bcm4354_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm62x2") ==0) {
+            return bcm62x2_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6255") ==0) {
+            return bcm6255_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
+            return bcm6212_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+            return bcm4356_fw_path[2];
+        }
 #else
         return WIFI_DRIVER_FW_PATH_P2P;
 #endif
@@ -1066,7 +1115,7 @@ int wifi_change_fw_path(const char *fwpath)
     int fd;
     int ret = 0;
 #ifdef MULTI_WIFI_SUPPORT
-    if (strcmp(get_wifi_vendor_name(), "bcm") !=0)
+    if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0)
         return ret;
 #endif
 
