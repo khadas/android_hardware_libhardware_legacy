@@ -72,7 +72,6 @@ static struct wpa_ctrl *monitor_conn;
 
 /* socket pair used to exit from a blocking read */
 static int exit_sockets[2];
-
 static char primary_iface[PROPERTY_VALUE_MAX];
 // TODO: use new ANDROID_SOCKET mechanism, once support for multiple
 // sockets is in
@@ -1047,7 +1046,7 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6255_fw_path[0];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
             return bcm6212_fw_path[0];
-        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[0];
         }
 #else
@@ -1073,7 +1072,7 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6255_fw_path[1];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
             return bcm6212_fw_path[1];
-        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[1];
         }
 #else
@@ -1099,7 +1098,7 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6255_fw_path[2];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6212") ==0) {
             return bcm6212_fw_path[2];
-        } else if (strcmp(get_wifi_vendor_name(), "bcm4356") ==0) {
+        } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[2];
         }
 #else

@@ -37,8 +37,6 @@
 #include <sys/_system_properties.h>
 #endif
 #include "../../amlogic/wifi/dongle_info/dongle_info.h"
-
-
 #include "../../../external/libusb/libusb-0.1.12/usb.h"
 
 static const char SYSFS_CLASS_NET[]     = "/sys/class/net";
@@ -354,7 +352,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
     }
     fclose(fp);
     if (strstr(sdio_buf,"4356")) {
-        write_no("bcm4356");
+        write_no("bcm6356");
         ALOGE("Found 6356 !!!\n");
         return 1;
     }
@@ -932,8 +930,8 @@ int cfg80211_load_driver()
 }
 int usb_wifi_load_driver()
 {
-    int i,j;
-    int usb_vidpid_count=0;
+    int unsigned i,j;
+    int unsigned usb_vidpid_count=0;
     int count = 100;
     struct usb_bus *bus;
     usb_init();
@@ -988,7 +986,64 @@ const char *get_wifi_vendor_name()
 {
     char wifi_type[10];
     read_no(wifi_type);
-    return wifi_type;
+    if (strstr(wifi_type, "bcm6330") != NULL) {
+        return "bcm6330";
+    } else if(strstr(wifi_type, "bcm6210") != NULL) {
+        return "bcm6210";
+    } else if(strstr(wifi_type, "bcm6335") != NULL) {
+        return "bcm6335";
+    } else if(strstr(wifi_type, "bcm6234") != NULL) {
+        return "bcm6234";
+    } else if(strstr(wifi_type, "bcm4354") != NULL) {
+        return "bcm4354";
+    } else if(strstr(wifi_type, "bcm62x2") != NULL) {
+        return "bcm62x2";
+    } else if(strstr(wifi_type, "bcm6255") != NULL) {
+        return "bcm6255";
+    } else if(strstr(wifi_type, "bcm6212") != NULL) {
+        return "bcm6212";
+    } else if(strstr(wifi_type, "bcm6356") != NULL) {
+        return "bcm6356";
+    } else if(strstr(wifi_type, "qcn9377") != NULL) {
+        return "qcn9377";
+    } else if(strstr(wifi_type, "qcn6174") != NULL) {
+        return "qcn6174";
+    } else if(strstr(wifi_type, "rtl8723bs") != NULL) {
+        return "rtl8723bs";
+    } else if(strstr(wifi_type, "rtl8189es") != NULL) {
+        return "rtl8189es";
+    } else if(strstr(wifi_type, "rtl8822bs") != NULL) {
+        return "rtl8822bs";
+    } else if(strstr(wifi_type, "rtl8189ftv") != NULL) {
+        return "rtl8189ftv";
+    } else if(strstr(wifi_type, "rtl8192es") != NULL) {
+        return "rtl8192es";
+    } else if(strstr(wifi_type, "rtl8188eu") != NULL) {
+        return "rtl8188eu";
+    } else if(strstr(wifi_type, "rtl8723bu") != NULL) {
+        return "rtl8723bu";
+    } else if(strstr(wifi_type, "rtl8821au") != NULL) {
+        return "rtl8821au";
+    } else if(strstr(wifi_type, "rtl8188ftv") != NULL) {
+        return "rtl8188ftv";
+    } else if(strstr(wifi_type, "rtl8192cu") != NULL) {
+        return "rtl8192cu";
+    } else if(strstr(wifi_type, "rtl8192du") != NULL) {
+        return "rtl8192du";
+    } else if(strstr(wifi_type, "rtl8192eu") != NULL) {
+        return "rtl8192eu";
+    } else if(strstr(wifi_type, "mtk7601") != NULL) {
+        return "mtk7601";
+    } else if(strstr(wifi_type, "mtk7662") != NULL) {
+        return "mtk7662";
+    } else if(strstr(wifi_type, "mtk7603") != NULL) {
+        return "mtk7603";
+    } else if(strstr(wifi_type, "bcm43569") != NULL) {
+        return "bcm43569";
+    } else {
+        ALOGE("can not found manch wifi\n");
+        return NULL;
+    }
 }
 
 int multi_wifi_load_driver()
@@ -1038,7 +1093,7 @@ int multi_wifi_unload_driver()
         }
         ALOGE("Unload driver OK !\n");
     } else
-        ALOGE("not have any load driver!\n");
+        return -1;
 
     return 0;
 }
