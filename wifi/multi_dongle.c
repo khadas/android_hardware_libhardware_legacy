@@ -37,8 +37,7 @@
 #include <sys/_system_properties.h>
 #endif
 #include "../../amlogic/wifi/dongle_info/dongle_info.h"
-#include "../../../external/libusb/libusb-0.1.12/usb.h"
-
+#include "../../../external/libusb/libusb/libusb.h"
 static const char SYSFS_CLASS_NET[]     = "/sys/class/net";
 static const char SYS_MOD_NAME_DIR[]    = "device/driver/module";
 static const char DRIVER_PROP_NAME[]    = "wlan.driver.status";
@@ -351,7 +350,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"4356")) {
+    if (strstr(sdio_buf,"432256")) {
         write_no("bcm6356");
         ALOGE("Found 6356 !!!\n");
         return 1;
@@ -717,131 +716,26 @@ static int load_dongle_index = -1;
 
 static int indent_usb_table = 0;
 static struct usb_detail_table usb_table[10] = {};
-
-static void print_endpoint(struct usb_endpoint_descriptor *endpoint)
+static void print_devs(libusb_device **devs)
 {
-  ALOGD("      bEndpointAddress: %02xh\n", endpoint->bEndpointAddress);
-  ALOGD("      bmAttributes:     %02xh\n", endpoint->bmAttributes);
-  ALOGD("      wMaxPacketSize:   %d\n", endpoint->wMaxPacketSize);
-  ALOGD("      bInterval:        %d\n", endpoint->bInterval);
-  ALOGD("      bRefresh:         %d\n", endpoint->bRefresh);
-  ALOGD("      bSynchAddress:    %d\n", endpoint->bSynchAddress);
-}
+    libusb_device *dev;
+    int i = 0;
 
-static void print_altsetting(struct usb_interface_descriptor *interface)
-{
-  int i;
-
-  ALOGD("    bInterfaceNumber:   %d\n", interface->bInterfaceNumber);
-  ALOGD("    bAlternateSetting:  %d\n", interface->bAlternateSetting);
-  ALOGD("    bNumEndpoints:      %d\n", interface->bNumEndpoints);
-  ALOGD("    bInterfaceClass:    %d\n", interface->bInterfaceClass);
-  ALOGD("    bInterfaceSubClass: %d\n", interface->bInterfaceSubClass);
-  ALOGD("    bInterfaceProtocol: %d\n", interface->bInterfaceProtocol);
-  ALOGD("    iInterface:         %d\n", interface->iInterface);
-
-  for (i = 0; i < interface->bNumEndpoints; i++)
-    print_endpoint(&interface->endpoint[i]);
-}
-
-static void print_interface(struct usb_interface *interface)
-{
-  int i;
-
-  for (i = 0; i < interface->num_altsetting; i++)
-    print_altsetting(&interface->altsetting[i]);
-}
-
-static void print_configuration(struct usb_config_descriptor *config)
-{
-  int i;
-
-  printf("  wTotalLength:         %d\n", config->wTotalLength);
-  printf("  bNumInterfaces:       %d\n", config->bNumInterfaces);
-  printf("  bConfigurationValue:  %d\n", config->bConfigurationValue);
-  printf("  iConfiguration:       %d\n", config->iConfiguration);
-  printf("  bmAttributes:         %02xh\n", config->bmAttributes);
-  printf("  MaxPower:             %d\n", config->MaxPower);
-
-  for (i = 0; i < config->bNumInterfaces; i++)
-    print_interface(&config->interface[i]);
-}
-
-static int print_device(struct usb_device *dev, int level)
-{
-  usb_dev_handle *udev;
-  char description[256];
-  char string[256];
-  int ret, i;
-
-  if (dev == NULL)
-	return 0;
-  udev = usb_open(dev);
-  if (udev) {
-    if (dev->descriptor.iManufacturer) {
-      ret = usb_get_string_simple(udev, dev->descriptor.iManufacturer, string, sizeof(string));
-      if (ret > 0)
-        snprintf(description, sizeof(description), "%s - ", string);
-      else
-        snprintf(description, sizeof(description), "%04X - ",
-                 dev->descriptor.idVendor);
-    } else
-      snprintf(description, sizeof(description), "%04X - ",
-               dev->descriptor.idVendor);
-		usb_table[indent_usb_table].vid = dev->descriptor.idVendor;
-
-    if (dev->descriptor.iProduct) {
-      ret = usb_get_string_simple(udev, dev->descriptor.iProduct, string, sizeof(string));
-      if (ret > 0)
-        snprintf(description + strlen(description), sizeof(description) -
-                 strlen(description), "%s", string);
-      else
-        snprintf(description + strlen(description), sizeof(description) -
-                 strlen(description), "%04X", dev->descriptor.idProduct);
-    } else
-      snprintf(description + strlen(description), sizeof(description) -
-               strlen(description), "%04X", dev->descriptor.idProduct);
-		usb_table[indent_usb_table].pid = dev->descriptor.idProduct;
-    indent_usb_table ++;
-  } else{
-        ALOGE("Open failed! \n");
-        snprintf(description, sizeof(description), "%04X - %04X",
-             dev->descriptor.idVendor, dev->descriptor.idProduct);
-    ALOGE("The VID:PID is 0x%04X : 0x%04X\n",dev->descriptor.idVendor,dev->descriptor.idProduct);
-}
-
-
-  printf("%.*sDev #%d: %s\n", level * 2, "                    ", dev->devnum,
-         description);
-
-  if (udev && verbose1) {
-    if (dev->descriptor.iSerialNumber) {
-      ret = usb_get_string_simple(udev, dev->descriptor.iSerialNumber, string, sizeof(string));
-      if (ret > 0)
-        printf("%.*s  - Serial Number: %s\n", level * 2,
-               "                    ", string);
+    while ((dev = devs[i++]) != NULL) {
+        struct libusb_device_descriptor desc;
+        int r = libusb_get_device_descriptor(dev, &desc);
+        if (r < 0) {
+            fprintf(stderr, "failed to get device descriptor");
+            return;
+        }
+        usb_table[indent_usb_table].vid = desc.idVendor;
+        usb_table[indent_usb_table].pid = desc.idProduct;
+        indent_usb_table++;
+        ALOGE("%04x:%04x (bus %d, device %d)\n",
+            desc.idVendor, desc.idProduct,
+            libusb_get_bus_number(dev), libusb_get_device_address(dev));
     }
-  }
-
-  if (udev)
-    usb_close(udev);
-
-  if (verbose1) {
-    if (!dev->config) {
-      printf("  Couldn't retrieve descriptors\n");
-      return 0;
-    }
-
-    for (i = 0; i < dev->descriptor.bNumConfigurations; i++)
-      print_configuration(&dev->config[i]);
-  } else {
-    for (i = 0; i < dev->num_children; i++)
-      print_device(dev->children[i], level + 1);
-  }
-
-  return 0;
 }
-
 static int get_driver_info()
 {
     DIR  *netdir;
@@ -933,23 +827,22 @@ int usb_wifi_load_driver()
     int unsigned i,j;
     int unsigned usb_vidpid_count=0;
     int count = 100;
-    struct usb_bus *bus;
-    usb_init();
-    usb_find_busses();
-    usb_find_devices();
-    if (is_driver_loaded()) {
-        ALOGD("Wi-Fi driver has loaded !");
-        return 0;
-    }
-    for (bus = usb_busses; bus; bus = bus->next) {
-        if (bus->root_dev && !verbose1) {
-            print_device(bus->root_dev, 0);
-        }else {
-            struct usb_device *dev;
-            for (dev = bus->devices; dev; dev = dev->next)
-                print_device(dev, 0);
-        }
-    }
+    libusb_device **devs;
+    int r;
+    ssize_t cnt;
+
+    r = libusb_init(NULL);
+    if (r < 0)
+        return r;
+
+    cnt = libusb_get_device_list(NULL, &devs);
+    if (cnt < 0)
+        return (int) cnt;
+
+    print_devs(devs);
+    libusb_free_device_list(devs, 1);
+
+    libusb_exit(NULL);
     usb_vidpid_count = indent_usb_table;
     indent_usb_table = 0;
     load_dongle_index = -1;
@@ -969,7 +862,7 @@ int usb_wifi_load_driver()
                 ALOGD("The matched dongle no. is %d\n",j);
                 if (dongle_registerd[j].load() != 0) {
                     ALOGD("Load Wi-Fi driver error !!!\n");
-                    return -1;
+                    return 1;
                 }
                 return 0;
             }
@@ -1066,12 +959,15 @@ int multi_wifi_load_driver()
         return 0;
     }
     do {
-        if (!usb_wifi_load_driver()) {
+        if (!usb_wifi_load_driver())
             return 0;
-        }
+        else if (usb_wifi_load_driver() > 0)
+            break;
+        else {
         wait_time++;
         usleep(50000);
         ALOGD("wait usb ok\n");
+        }
     }while(wait_time<300);
 
     ALOGE("Wifi load fail\n");
