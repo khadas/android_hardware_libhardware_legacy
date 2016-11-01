@@ -171,7 +171,6 @@ int search_bcm40183(unsigned int x,unsigned int y)
         fclose(fp);
         return -1;
     }
-    ALOGE("sdio_buf:%s\n",sdio_buf);
     fclose(fp);
     if (strstr(sdio_buf,"4330")) {
         write_no("bcm6330");
@@ -350,7 +349,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"432256")) {
+    if (strstr(sdio_buf,"4356")) {
         write_no("bcm6356");
         ALOGE("Found 6356 !!!\n");
         return 1;
@@ -731,9 +730,6 @@ static void print_devs(libusb_device **devs)
         usb_table[indent_usb_table].vid = desc.idVendor;
         usb_table[indent_usb_table].pid = desc.idProduct;
         indent_usb_table++;
-        ALOGE("%04x:%04x (bus %d, device %d)\n",
-            desc.idVendor, desc.idProduct,
-            libusb_get_bus_number(dev), libusb_get_device_address(dev));
     }
 }
 static int get_driver_info()
@@ -875,6 +871,41 @@ int usb_wifi_load_driver()
     }
     return 0;
 }
+
+int sdio_wifi_load_driver()
+{
+    int i;
+    int ret =0;
+    load_dongle_index = -1;
+    for (i=0;i < sizeof(dongle_registerd)/sizeof(dongle_info); i++) {
+        ret=dongle_registerd[i].search(0,0);
+        if (ret ==1) {
+            load_dongle_index = i;
+            if (!is_cfg80211_loaded()) {
+                if (strcmp(get_wifi_vendor_name(), "qcn") == 0)
+                    qcn_cfg80211_load_driver();
+                else
+                    cfg80211_load_driver();
+            }
+            ALOGD("The matched dongle no. is %d\n", i);
+            if (dongle_registerd[i].load() != 0) {
+                ALOGD("Load Wi-Fi driver error !!!\n");
+                return -1;
+            }
+            return 0;
+        } else if(ret == -1) {
+            ALOGD("NO sdio device!!!\n");
+            return -1;
+        } else if (ret ==0){
+            continue;
+        }
+    }
+    if (load_dongle_index == -1) {
+        ALOGD("Didn't find matched sdio wifi dongle!!!\n");
+        return -1;
+    }
+    return 0;
+}
 const char *get_wifi_vendor_name()
 {
     char wifi_type[10];
@@ -941,7 +972,7 @@ const char *get_wifi_vendor_name()
 
 int multi_wifi_load_driver()
 {
-    int wait_time=0;
+    int wait_time=0,ret;
     set_wifi_power(SDIO_POWER_UP);
     if (load_dongle_index >= 0) {
         if (!is_cfg80211_loaded()) {
@@ -958,10 +989,14 @@ int multi_wifi_load_driver()
         ALOGD("wifi driver load ok\n");
         return 0;
     }
+    if (!sdio_wifi_load_driver()) {
+        return 0;
+    }
     do {
-        if (!usb_wifi_load_driver())
+        ret = usb_wifi_load_driver();
+        if (!ret)
             return 0;
-        else if (usb_wifi_load_driver() > 0)
+        else if (ret> 0)
             break;
         else {
         wait_time++;
