@@ -882,7 +882,7 @@ int sdio_wifi_load_driver()
         if (ret ==1) {
             load_dongle_index = i;
             if (!is_cfg80211_loaded()) {
-                if (strcmp(get_wifi_vendor_name(), "qcn") == 0)
+                if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
                     qcn_cfg80211_load_driver();
                 else
                     cfg80211_load_driver();
