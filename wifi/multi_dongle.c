@@ -709,6 +709,7 @@ static const dongle_info dongle_registerd[]={\
 	{mt7601_load_driver,mt7601_unload_driver,search_mt7601},\
 	{mt7662_load_driver,mt7662_unload_driver,search_mt7662},\
 	{mt7603_load_driver,mt7603_unload_driver,search_mt7603}, \
+	{bu8822_load_driver,bu8822_unload_driver,search_8822bu}, \
 	{bcm43569_load_driver,bcm43569_unload_driver,search_bcm43569}};
 
 static int load_dongle_index = -1;
@@ -938,6 +939,8 @@ const char *get_wifi_vendor_name()
         return "rtl8189es";
     } else if(strstr(wifi_type, "rtl8822bs") != NULL) {
         return "rtl8822bs";
+    } else if(strstr(wifi_type, "rtl8822bu") != NULL) {
+        return "rtl8822bu";
     } else if(strstr(wifi_type, "rtl8189ftv") != NULL) {
         return "rtl8189ftv";
     } else if(strstr(wifi_type, "rtl8192es") != NULL) {

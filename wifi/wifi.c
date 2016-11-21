@@ -467,7 +467,7 @@ int wifi_unload_driver()
         set_wifi_power(USB_POWER_DOWN);
         return -1;
     }
-    if (strcmp(get_wifi_vendor_name(), "bcm43569") != 0)/*the service is for bcm usb wifi*/
+    if (strcmp(get_wifi_vendor_name(), "bcm43569") == 0)/*the service is for bcm usb wifi*/
         property_set("ctl.stop", "bcmdl");
 #else
     if (rmmod(DRIVER_MODULE_NAME) == 0) {
