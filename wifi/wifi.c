@@ -405,12 +405,12 @@ int wifi_load_driver()
             return -1;
 #endif
     }
+#ifdef BCM_USB_WIFI
+    property_set("ctl.start", "bcmdl");
+    enable_bcmdl(1);
+#endif
     if (insmod(DRIVER_MODULE_PATH, DRIVER_MODULE_ARG) < 0)
         return -1;
-
-#ifdef BCM_USB_WIFI
-   enable_bcmdl(1);
-#endif
 
 #endif
 #define TIME_COUNT 200
@@ -482,6 +482,7 @@ int wifi_unload_driver()
         set_wifi_power(USB_POWER_DOWN);
 
 #ifdef BCM_USB_WIFI
+        property_set("ctl.stop", "bcmdl");
         enable_bcmdl(0);
 #endif
 
