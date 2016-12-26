@@ -1075,6 +1075,13 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6212_fw_path[1];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[1];
+        } else if(strcmp(get_wifi_vendor_name(), "mtk7668") == 0) {
+            if (!is_wifi_driver_loaded()) {
+                rmmod("wlan_mt76x8_sdio");
+                ALOGD("wait a minute........");
+                usleep(100000);
+                insmod("/system/lib/wlan_mt76x8_sdio.ko", "sta=sta ap=wlan");
+            }
         }
 #else
         return WIFI_DRIVER_FW_PATH_AP;

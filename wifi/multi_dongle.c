@@ -708,6 +708,7 @@ static const dongle_info dongle_registerd[]={\
 	{eu8192_load_driver,eu8192_unload_driver,search_8192eu},\
 	{mt7601_load_driver,mt7601_unload_driver,search_mt7601},\
 	{mt7662_load_driver,mt7662_unload_driver,search_mt7662},\
+	{mt7668_load_driver,mt7668_unload_driver,search_mt7668},\
 	{mt7603_load_driver,mt7603_unload_driver,search_mt7603}, \
 	{bu8822_load_driver,bu8822_unload_driver,search_8822bu}, \
 	{bcm43569_load_driver,bcm43569_unload_driver,search_bcm43569}};
@@ -760,21 +761,10 @@ static int get_driver_info()
     return ret;
 }
 
-int is_driver_loaded()
+int is_driver_loaded(const char *module_tag)
 {
-    if (!get_driver_info()) {
-        property_set(DRIVER_PROP_NAME,"unloaded");
-        return 0;
-    } else {
-        property_set(DRIVER_PROP_NAME,"ok");
-        return 1;
-    }
-}
-
-
-static int is_cfg80211_loaded() {
     FILE *proc;
-    char line[sizeof(CFG80211_MODULE_TAG)+10];
+    char line[sizeof(module_tag)+10];
 
     /*
      * If the property says the driver is loaded, check to
@@ -787,7 +777,7 @@ static int is_cfg80211_loaded() {
         return 0;
     }
     while ((fgets(line, sizeof(line), proc)) != NULL) {
-        if (strncmp(line, CFG80211_MODULE_TAG, strlen(CFG80211_MODULE_TAG)) == 0) {
+        if (strncmp(line, module_tag, strlen(module_tag)) == 0) {
             fclose(proc);
             return 1;
         }
@@ -846,7 +836,7 @@ int usb_wifi_load_driver()
     for (i = 0;i < usb_vidpid_count; i ++) {
         for (j = 0;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
             if (dongle_registerd[j].search(usb_table[i].vid,usb_table[i].pid) == 1) {
-                if (!is_cfg80211_loaded()) {
+                if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
                 if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
                     qcn_cfg80211_load_driver();
                 else
@@ -882,11 +872,16 @@ int sdio_wifi_load_driver()
         ret=dongle_registerd[i].search(0,0);
         if (ret ==1) {
             load_dongle_index = i;
-            if (!is_cfg80211_loaded()) {
+            if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
                 if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
                     qcn_cfg80211_load_driver();
                 else
                     cfg80211_load_driver();
+            }
+            if (is_driver_loaded(BCM40183_MODULE_TAG) && strncmp(get_wifi_vendor_name(), "bcm", 3) == 0) {
+                wifi_rmmod(BCM40183_MODULE_NAME);
+                ALOGE("dhd driver is load ,unload first\n");
+                usleep(2000000);
             }
             ALOGD("The matched dongle no. is %d\n", i);
             if (dongle_registerd[i].load() != 0) {
@@ -963,6 +958,8 @@ const char *get_wifi_vendor_name()
         return "mtk7601";
     } else if(strstr(wifi_type, "mtk7662") != NULL) {
         return "mtk7662";
+    } else if(strstr(wifi_type, "mtk7668") != NULL) {
+        return "mtk7668";
     } else if(strstr(wifi_type, "mtk7603") != NULL) {
         return "mtk7603";
     } else if(strstr(wifi_type, "bcm43569") != NULL) {
@@ -978,7 +975,7 @@ int multi_wifi_load_driver()
     int wait_time=0,ret;
     set_wifi_power(SDIO_POWER_UP);
     if (load_dongle_index >= 0) {
-        if (!is_cfg80211_loaded()) {
+        if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
             if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
                 qcn_cfg80211_load_driver();
             else
