@@ -115,6 +115,7 @@ static const char *bcm62x2_fw_path[] = {"/etc/wifi/62x2/fw_bcm43241b4_ag.bin","/
 static const char *bcm6255_fw_path[] = {"/etc/wifi/6255/fw_bcm43455c0_ag.bin","/etc/wifi/6255/fw_bcm43455c0_ag_apsta.bin","/etc/wifi/6255/fw_bcm43455c0_ag_p2p.bin"};
 static const char *bcm6212_fw_path[] = {"/etc/wifi/6212/fw_bcm43438a0.bin","/etc/wifi/6212/fw_bcm43438a0_apsta.bin","/etc/wifi/6212/fw_bcm43438a0_p2p.bin"};
 static const char *bcm4356_fw_path[] = {"/etc/wifi/4356/fw_bcm4356a2_ag.bin","/etc/wifi/4356/fw_bcm4356a2_ag_apsta.bin","/etc/wifi/4356/fw_bcm4356a2_ag_p2p.bin"};
+static const char *bcm4358_fw_path[] = {"/etc/wifi/4358/fw_bcm4358_ag.bin","/etc/wifi/4358/fw_bcm4358_ag_apsta.bin","/etc/wifi/4358/fw_bcm4358_ag_p2p.bin"};
 static const char *wifi_driver_fw_path[]={"STA","AP","P2P"};
 #endif
 #define WIFI_DRIVER_LOADER_DELAY	1000000
@@ -1049,6 +1050,8 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6212_fw_path[0];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[0];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4358") ==0) {
+            return bcm4358_fw_path[0];
         }
 #else
         return WIFI_DRIVER_FW_PATH_STA;
@@ -1075,6 +1078,8 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6212_fw_path[1];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[1];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4358") ==0) {
+            return bcm4358_fw_path[1];
         } else if(strcmp(get_wifi_vendor_name(), "mtk7668") == 0) {
             if (!is_wifi_driver_loaded()) {
                 rmmod("wlan_mt76x8_sdio");
@@ -1108,6 +1113,8 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm6212_fw_path[2];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6356") ==0) {
             return bcm4356_fw_path[2];
+        } else if (strcmp(get_wifi_vendor_name(), "bcm4358") ==0) {
+            return bcm4358_fw_path[2];
         }
 #else
         return WIFI_DRIVER_FW_PATH_P2P;
