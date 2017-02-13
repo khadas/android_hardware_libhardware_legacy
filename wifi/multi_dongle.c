@@ -55,10 +55,12 @@ static const char BS8189_MODULE_PATH[]  = "/system/lib/8189es.ko";
 static const char BS8189_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
 
 static const char CFG80211_MODULE_TAG[]   = "cfg80211";
-static const char QCN80211_MODULE_PATH[]  = "/system/lib/qcn80211.ko";
+static const char CFG80211_9377_MODULE_PATH[]  = "/system/lib/cfg80211_9377.ko";
+static const char CFG80211_6174_MODULE_PATH[]  = "/system/lib/cfg80211_6174.ko";
 static const char CFG80211_MODULE_PATH[]  = "/system/lib/cfg80211.ko";
 static const char CFG80211_MODULE_ARG[]   = "";
-static const char COMPAT_MODULE_PATH[]  = "/system/lib/compat.ko";
+static const char COMPAT_9377_MODULE_PATH[]  = "/system/lib/compat_9377.ko";
+static const char COMPAT_6174_MODULE_PATH[]  = "/system/lib/compat_6174.ko";
 static const char COMPAT_MODULE_ARG[]   = "";
 
 static const char BS8822_MODULE_NAME[]  = "8822bs";
@@ -739,8 +741,8 @@ static const dongle_info dongle_registerd[]={\
 	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
 	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
 	{bcm4358_load_driver,bcm4358_unload_driver,search_bcm4358},\
-	{qc9377_load_driver,qc9377_unload_driver,search_qc9377},\
-	{qc6174_load_driver,qc6174_unload_driver,search_qc6174},\
+	{qca9377_load_driver,qca9377_unload_driver,search_qca9377},\
+	{qca6174_load_driver,qca6174_unload_driver,search_qca6174},\
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
 	{es8189_load_driver,es8189_unload_driver,search_es8189},\
 	{bs8822_load_driver,bs8822_unload_driver,search_bs8822},\
@@ -836,17 +838,30 @@ int is_driver_loaded(const char *module_tag)
     return 0;
 }
 
-int qcn_cfg80211_load_driver()
+int qca_cfg80211_load_driver()
 {
-	if (wifi_insmod(COMPAT_MODULE_PATH, COMPAT_MODULE_ARG) !=0) {
-        ALOGE("Failed to insmod qcn compat ko ! \n");
-        return -1;
+    if (strstr(get_wifi_vendor_name(), "9377")) {
+
+        if (wifi_insmod(COMPAT_9377_MODULE_PATH, COMPAT_MODULE_ARG) !=0) {
+            ALOGE("Failed to insmod qca compat ko ! \n");
+            return -1;
+        }
+        if (wifi_insmod(CFG80211_9377_MODULE_PATH, CFG80211_MODULE_ARG) !=0) {
+            ALOGE("Failed to insmod qca cfg80211 ! \n");
+            return -1;
+        }
+        ALOGD("Success to insmod 9377 cfg80211 driver! \n");
+    } else {
+        if (wifi_insmod(COMPAT_6174_MODULE_PATH, COMPAT_MODULE_ARG) !=0) {
+            ALOGE("Failed to insmod qca compat ko ! \n");
+            return -1;
+        }
+        if (wifi_insmod(CFG80211_6174_MODULE_PATH, CFG80211_MODULE_ARG) !=0) {
+            ALOGE("Failed to insmod qca cfg80211 ! \n");
+            return -1;
+        }
+        ALOGD("Success to insmod 6174 cfg80211 driver! \n");
     }
-	if (wifi_insmod(QCN80211_MODULE_PATH, CFG80211_MODULE_ARG) !=0) {
-        ALOGE("Failed to insmod qcn cfg80211 ! \n");
-        return -1;
-    }
-    ALOGD("Success to insmod qcn cfg80211 driver! \n");
     return 0;
 }
 
@@ -887,8 +902,8 @@ int usb_wifi_load_driver()
         for (j = 0;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
             if (dongle_registerd[j].search(usb_table[i].vid,usb_table[i].pid) == 1) {
                 if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
-                if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
-                    qcn_cfg80211_load_driver();
+                if (strncmp(get_wifi_vendor_name(), "qca", 3) == 0)
+                    qca_cfg80211_load_driver();
                 else
                     cfg80211_load_driver();
                 }
@@ -923,8 +938,8 @@ int sdio_wifi_load_driver()
         if (ret ==1) {
             load_dongle_index = i;
             if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
-                if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
-                    qcn_cfg80211_load_driver();
+                if (strncmp(get_wifi_vendor_name(), "qca", 3) == 0)
+                    qca_cfg80211_load_driver();
                 else
                     cfg80211_load_driver();
             }
@@ -976,10 +991,10 @@ const char *get_wifi_vendor_name()
         return "bcm6356";
     } else if(strstr(wifi_type, "bcm4358") != NULL) {
         return "bcm4358";
-    } else if(strstr(wifi_type, "qcn9377") != NULL) {
-        return "qcn9377";
-    } else if(strstr(wifi_type, "qcn6174") != NULL) {
-        return "qcn6174";
+    } else if(strstr(wifi_type, "qca9377") != NULL) {
+        return "qca9377";
+    } else if(strstr(wifi_type, "qca6174") != NULL) {
+        return "qca6174";
     } else if(strstr(wifi_type, "rtl8723bs") != NULL) {
         return "rtl8723bs";
     } else if(strstr(wifi_type, "rtl8189es") != NULL) {
@@ -1034,8 +1049,8 @@ int multi_wifi_load_driver()
     set_wifi_power(SDIO_POWER_UP);
     if (load_dongle_index >= 0) {
         if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
-            if (strncmp(get_wifi_vendor_name(), "qcn", 3) == 0)
-                qcn_cfg80211_load_driver();
+            if (strncmp(get_wifi_vendor_name(), "qca", 3) == 0)
+                qca_cfg80211_load_driver();
             else
                 cfg80211_load_driver();
         }

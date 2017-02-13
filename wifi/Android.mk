@@ -94,8 +94,8 @@ LOCAL_SRC_FILES += wifi/multi_dongle.c
 endif
 
 
-ifeq ($(WIFI_DRIVER),qcom9377)
-LOCAL_CFLAGS += -DBOARD_WIFI_QCAM9377
+ifeq ($(BOARD_WIFI_VENDOR),qualcomm)
+LOCAL_CFLAGS += -DBOARD_QCOM_WIFI
 endif
 
 ifeq ($(BCM_USB_WIFI),true)
@@ -103,6 +103,9 @@ LOCAL_CFLAGS += -DBCM_USB_WIFI
 LOCAL_CFLAGS += -DUSB_WIFI_SUPPORT
 endif
 
+ifeq ($(BOARD_WLAN_DEVICE),bcmdhd)
+LOCAL_CFLAGS += -DBOARD_WIFI_BCM
+endif
 LOCAL_SRC_FILES += wifi/wifi.c
 
 ifdef WPA_SUPPLICANT_VERSION

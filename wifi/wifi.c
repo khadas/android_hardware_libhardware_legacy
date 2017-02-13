@@ -94,7 +94,7 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #define WIFI_DRIVER_FW_PATH_P2P		NULL
 #endif
 
-#if (defined BOARD_WIFI_REALTEK) || (defined CONFIG_MTK_WIFI) || (defined BOARD_WIFI_QCAM9377)
+#if (defined BOARD_WIFI_REALTEK) || (defined CONFIG_MTK_WIFI) || (defined BOARD_QCOM_WIFI)
 #undef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA         "STA"
 #undef WIFI_DRIVER_FW_PATH_AP
@@ -127,7 +127,7 @@ static const char DRIVER_MODULE_TAG[]   = WIFI_DRIVER_MODULE_NAME " ";
 static const char DRIVER_MODULE_PATH[]  = WIFI_DRIVER_MODULE_PATH;
 static const char DRIVER_MODULE_ARG[]   = WIFI_DRIVER_MODULE_ARG;
 static const char CFG80211_MODULE_TAG[]   = "cfg80211";
-static const char QCN80211_MODULE_PATH[]  = "/system/lib/qcn80211.ko";
+static const char QCA80211_MODULE_PATH[]  = "/system/lib/qca80211.ko";
 static const char CFG80211_MODULE_PATH[]  = "/system/lib/cfg80211.ko";
 static const char CFG80211_MODULE_ARG[]   = "";
 static const char COMPAT_MODULE_PATH[]  = "/system/lib/compat.ko";
@@ -396,10 +396,10 @@ int wifi_load_driver()
         property_set("ctl.stop", "bcmdl");
 #else
     if (!is_cfg80211_loaded()) {
-#ifdef BOARD_WIFI_QCAM9377
+#ifdef BOARD_QCOM_WIFI
         if (insmod(COMPAT_MODULE_PATH, COMPAT_MODULE_ARG) < 0)
             return -1;
-        if (insmod(QCN80211_MODULE_PATH, CFG80211_MODULE_ARG) < 0)
+        if (insmod(QCA80211_MODULE_PATH, CFG80211_MODULE_ARG) < 0)
             return -1;
 #else
         if (insmod(CFG80211_MODULE_PATH, CFG80211_MODULE_ARG) < 0)
@@ -1133,7 +1133,7 @@ int wifi_change_fw_path(const char *fwpath)
         return ret;
 #endif
 
-#if (!defined BOARD_WIFI_REALTEK) && (!defined BOARD_WIFI_QCAM9377) && (!defined CONFIG_MTK_WIFI)
+#ifdef BOARD_WIFI_BCM
     if (!fwpath)
         return ret;
     fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
