@@ -751,6 +751,7 @@ static const dongle_info dongle_registerd[]={\
 	{du8723_load_driver,du8723_unload_driver,search_8723du},\
 	{ds8723_load_driver,ds8723_unload_driver,search_ds8723},\
 	{au8821_load_driver,au8821_unload_driver,search_8821au},\
+	{au8812_load_driver,au8812_unload_driver,search_8812au},\
 	{ftv8188_load_driver,ftv8188_unload_driver,search_8188ftv},\
 	{cu8192_load_driver,cu8192_unload_driver,search_cu},\
 	{du8192_load_driver,du8192_unload_driver,search_du},\
@@ -1001,6 +1002,8 @@ const char *get_wifi_vendor_name()
         return "rtl8723ds";
     } else if(strstr(wifi_type, "rtl8821au") != NULL) {
         return "rtl8821au";
+    } else if(strstr(wifi_type, "rtl8812au") != NULL) {
+        return "rtl8812au";
     } else if(strstr(wifi_type, "rtl8188ftv") != NULL) {
         return "rtl8188ftv";
     } else if(strstr(wifi_type, "rtl8192cu") != NULL) {
