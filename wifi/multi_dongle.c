@@ -353,7 +353,7 @@ int search_bcm4358(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"4358")) {
+    if (strstr(sdio_buf,"aa31")) {
         write_no("bcm4358");
         ALOGE("Found 4358 !!!\n");
         return 1;
