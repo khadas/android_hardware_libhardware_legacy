@@ -53,6 +53,10 @@ static const char BS8189_MODULE_NAME[]  = "8189es";
 static const char BS8189_MODULE_TAG[]   = "8189es";
 static const char BS8189_MODULE_PATH[]  = "/system/lib/8189es.ko";
 static const char BS8189_MODULE_ARG[]   = "ifname=wlan0 if2name=p2p0";
+static const char SSV6051_MODULE_NAME[]  = "ssv6051";
+static const char SSV6051_MODULE_TAG[]   = "ssv6051";
+static const char SSV6051_MODULE_PATH[]  = "/system/lib/ssv6051.ko";
+static const char SSV6051_MODULE_ARG[]   = "stacfgpath=/system/etc/wifi/ssv6051/ssv6051-wifi.cfg";
 
 static const char FS8189_MODULE_NAME[]  = "8189fs";
 static const char FS8189_MODULE_TAG[]   = "8189fs";
@@ -755,6 +759,57 @@ int search_fs8189(unsigned int x,unsigned int y)
     return 0;
 }
 
+int ssv6051_load_driver()
+{
+    if (wifi_insmod(SSV6051_MODULE_PATH, SSV6051_MODULE_ARG) != 0) {
+        ALOGE("Failed to insmod ssv6051 ! \n");
+        return -1;
+    }
+    ALOGD("Success to insmod ssv6051 driver! \n");
+    return 0;
+}
+
+
+int ssv6051_unload_driver()
+{
+    if (wifi_rmmod(SSV6051_MODULE_NAME) != 0) {
+       ALOGE("Failed to rmmod ssv6051 driver ! \n");
+       return -1;
+    }
+    while (is_driver_loaded()) {
+        usleep(200000);
+        ALOGD("Waiting to rmmod ssv6051 driver !\n");
+    }
+    usleep(200000);
+    ALOGD("Success to rmmod ssv6051 driver ! \n");
+    return 0;
+}
+
+int search_ssv6051(unsigned int x,unsigned int y)
+{
+    int fd,len;
+    char sdio_buf[128];
+    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
+    FILE *fp = fopen(file_name,"r");
+	ALOGE("ssv6051 search!!!\n");
+    if (!fp) {
+        ALOGE("Open sdio wifi file failed !!! \n");
+        return -1;
+    }
+    memset(sdio_buf,0,sizeof(sdio_buf));
+    if (fread(sdio_buf, 1,128,fp) < 1) {
+        ALOGE("Read error for %m\n", errno);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    if (strstr(sdio_buf,"3030")) {
+        ALOGE("Found ssv6051!!!\n");
+        usb_sdio_wifi=1;
+        return 1;
+    }
+    return 0;
+}
 static int cur_vid = 0;
 static int cur_pid = 0;
 typedef struct load_info{
@@ -774,6 +829,7 @@ static const dongle_info dongle_registerd[]={\
 	{bcm6255_load_driver,bcm6255_unload_driver,search_bcm6255},\
 	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
 	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
+	{ssv6051_load_driver,ssv6051_unload_driver,search_ssv6051}, \
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
 	{es8189_load_driver,es8189_unload_driver,search_es8189},\
 	{fs8189_load_driver,fs8189_unload_driver,search_fs8189},\
@@ -978,10 +1034,12 @@ int usb_wifi_load_driver()
                 print_device(dev, 0);
         }
     }
+
     usb_vidpid_count = indent_usb_table;
     indent_usb_table = 0;
     load_dongle_index = -1;
     for (j = 11;j < sizeof(dongle_registerd)/sizeof(dongle_info);j ++) {
+
         for (i = 0;i < usb_vidpid_count; i ++) {
             if (dongle_registerd[j].search(usb_table[i].vid,usb_table[i].pid) == 1) {
                 usb_sdio_wifi=1;
@@ -1011,7 +1069,7 @@ int sdio_wifi_load_driver()
     int i;
     int ret =0;
     load_dongle_index = -1;
-    for (i=0;i < 13; i++) {
+    for (i=0;i < 14; i++) {
         ret=dongle_registerd[i].search(0,0);
         if (ret ==1) {
             load_dongle_index = i;
@@ -1043,12 +1101,16 @@ const char *get_wifi_vendor_name()
     if (dgle_no < 9) {
         return "bcm";
     }
-    else if (8 <dgle_no && dgle_no < 20) {
+    else if (8 <dgle_no && dgle_no < 10) {
+		ALOGE("get_wifi_vendor_name: ssv");
+        return "ssv";
+    }
+    else if (9 < dgle_no && dgle_no < 21) {
         return "realtek";
-    }
-    else if (dgle_no > 19) {
-        return "mtk";
-    }
+    } else if (20 < dgle_no) {
+		return "mtk";
+	}
+
     ALOGE("get_wifi_vendor_name failed, return defalut value: bcm");
     return "bcm";
 }
@@ -1065,7 +1127,7 @@ int multi_wifi_load_driver()
         }
         wait_time++;
         usleep(50000);
-        ALOGD("wait usb ok\n");
+     //   ALOGD("wait usb ok\n");
     }while(wait_time<300);
 
     ALOGE("Wifi load fail\n");

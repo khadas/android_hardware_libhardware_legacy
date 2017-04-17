@@ -96,7 +96,7 @@ static char primary_iface[PROPERTY_VALUE_MAX];
 #define WIFI_DRIVER_FW_PATH_P2P		NULL
 #endif
 
-#if (defined BOARD_WIFI_REALTEK) || (defined CONFIG_MTK_WIFI) || (defined BOARD_WIFI_QCAM9377)
+#if (defined BOARD_WIFI_REALTEK) || (defined CONFIG_MTK_WIFI) || (defined BOARD_WIFI_QCAM9377) || (defined BOARD_WIFI_ICOMM)
 #undef WIFI_DRIVER_FW_PATH_STA
 #define WIFI_DRIVER_FW_PATH_STA         "STA"
 #undef WIFI_DRIVER_FW_PATH_AP
@@ -607,6 +607,13 @@ int wifi_start_supplicant(int p2p_supported)
     ifc_init();
     ifc_up("wlan0");
 #endif
+
+#ifdef BOARD_WIFI_ICOMM
+    ifc_init();
+    ifc_up("wlan0");
+    ifc_up("p2p0");
+#endif
+
     if (p2p_supported) {
 #ifdef MULTI_WIFI_SUPPORT
         if (strcmp(get_wifi_vendor_name(), "bcm") == 0) {
@@ -625,6 +632,10 @@ int wifi_start_supplicant(int p2p_supported)
                        return -1;
                    }
                }
+           } else if (strncmp(get_wifi_vendor_name(), "ssv", 3) == 0) {
+               ifc_init();
+               ifc_up("wlan0");
+               ifc_up("p2p0");
            }
            strcpy(supplicant_name, RTL_SUPPLICANT_NAME);
            strcpy(supplicant_prop_name, RTL_PROP_NAME);
@@ -1032,7 +1043,7 @@ int wifi_change_fw_path(const char *fwpath)
         return ret;
 #endif
 
-#if (!defined BOARD_WIFI_REALTEK) && (!defined BOARD_WIFI_QCAM9377) && (!defined CONFIG_MTK_WIFI)
+#if (!defined BOARD_WIFI_REALTEK) && (!defined BOARD_WIFI_QCAM9377) && (!defined CONFIG_MTK_WIFI) && (!defined BOARD_WIFI_ICOMM)
     if (!fwpath)
         return ret;
     fd = TEMP_FAILURE_RETRY(open(WIFI_DRIVER_FW_PATH_PARAM, O_WRONLY));
