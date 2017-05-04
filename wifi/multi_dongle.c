@@ -117,7 +117,6 @@ int search_bcm6335(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -162,7 +161,6 @@ int search_bcm40183(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         ALOGD("not found  sdio file sdio:0001:1/device\n");
@@ -207,7 +205,6 @@ int search_bcm6210(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         return 2;
@@ -252,7 +249,6 @@ int search_bcm6234(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp) {
         return 2;
@@ -296,7 +292,6 @@ int search_bcm6354(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -341,7 +336,6 @@ int search_bcm4358(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -385,7 +379,6 @@ int search_bcm6356(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -430,7 +423,6 @@ int search_bcm62x2(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -475,7 +467,6 @@ int search_bcm6255(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -521,7 +512,6 @@ int search_bcm6212(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -566,7 +556,6 @@ int search_bs8723(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -578,7 +567,7 @@ int search_bs8723(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"b723")) {
+    if (strstr(sdio_buf,"b22723")) {
         write_no("rtl8723bs");
         ALOGE("Found 8723bs !!!\n");
         return 1;
@@ -611,7 +600,6 @@ int search_es8189(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -657,7 +645,6 @@ int search_bs8822(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -701,7 +688,6 @@ int search_fs8189(unsigned int x,unsigned int y)
 {
     int fd,len;
     char sdio_buf[128];
-    char file_name[] = "/sys/bus/mmc/devices/sdio:0001/sdio:0001:1/device";
     FILE *fp = fopen(file_name,"r");
     if (!fp)
         return -1;
@@ -1047,6 +1033,10 @@ int multi_wifi_load_driver()
 {
     int wait_time=0,ret;
     set_wifi_power(SDIO_POWER_UP);
+    char dev_type[10] = {'\0'};
+    get_wifi_dev_type(dev_type);
+    sprintf(file_name, "/sys/bus/mmc/devices/%s:0001/%s:0001:1/device", dev_type, dev_type);
+    ALOGD("sdio device file path = %s", file_name);
     if (load_dongle_index >= 0) {
         if (!is_driver_loaded(CFG80211_MODULE_TAG)) {
             if (strncmp(get_wifi_vendor_name(), "qca", 3) == 0)

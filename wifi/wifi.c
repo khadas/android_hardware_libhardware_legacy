@@ -329,6 +329,7 @@ int is_wifi_driver_loaded() {
 #define USB_POWER_DOWN  _IO('m',2)
 #define SDIO_POWER_UP    _IO('m',3)
 #define SDIO_POWER_DOWN  _IO('m',4)
+#define SDIO_GET_DEV_TYPE  _IO('m',5)
 //0: power on
 //!0: power off
 void set_wifi_power(int on)
@@ -366,6 +367,26 @@ void set_wifi_power(int on)
         ALOGE("Device open failed !!!\n");
     close(fd);
     return;
+}
+
+int get_wifi_dev_type(char *dev_type)
+{
+    int fd;
+    fd = open("/dev/wifi_power", O_RDWR);
+    if (fd < 0) {
+       ALOGE("/dev/wifi_power open fail, %s",strerror(errno));
+       return -1;
+    }
+
+    if (ioctl (fd,SDIO_GET_DEV_TYPE, dev_type)<0) {
+        ALOGE("get dev type fail, %s",strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    ALOGE("get dev type: %s",dev_type);
+    close(fd);
+    return 0;
 }
 int wifi_load_driver()
 {

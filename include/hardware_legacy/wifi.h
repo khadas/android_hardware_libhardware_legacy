@@ -30,6 +30,8 @@ int wifi_load_driver();
 
 void set_wifi_power(int on);
 
+int get_wifi_dev_type(char *dev_type);
+
 /**
  * Unload the Wi-Fi driver.
  *
