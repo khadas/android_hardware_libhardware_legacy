@@ -1079,7 +1079,11 @@ const char *wifi_get_fw_path(int fw_type)
 #endif
     case WIFI_GET_FW_PATH_AP:
 #ifdef MULTI_WIFI_SUPPORT
-        if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0) {
+        if (strcmp(get_wifi_vendor_name(), "mtk7668") == 0) {
+            rmmod("wlan_mt76x8_sdio");
+            ALOGE("mtk7668 need load ap driver .......\n");
+            usleep(100000);
+            insmod("/system/lib/wlan_mt76x8_sdio.ko", "sta=sta ap=wlan");
             return wifi_driver_fw_path[1];
         } else if (strcmp(get_wifi_vendor_name(), "bcm6330") ==0) {
             return bcm6330_fw_path[1];
@@ -1101,13 +1105,8 @@ const char *wifi_get_fw_path(int fw_type)
             return bcm4356_fw_path[1];
         } else if (strcmp(get_wifi_vendor_name(), "bcm4358") ==0) {
             return bcm4358_fw_path[1];
-        } else if(strcmp(get_wifi_vendor_name(), "mtk7668") == 0) {
-            if (!is_wifi_driver_loaded()) {
-                rmmod("wlan_mt76x8_sdio");
-                ALOGD("wait a minute........");
-                usleep(100000);
-                insmod("/system/lib/wlan_mt76x8_sdio.ko", "sta=sta ap=wlan");
-            }
+        } else if (strncmp(get_wifi_vendor_name(), "bcm", 3) !=0 || strcmp(get_wifi_vendor_name(), "bcm43569") ==0) {
+            return wifi_driver_fw_path[1];
         }
 #else
         return WIFI_DRIVER_FW_PATH_AP;
