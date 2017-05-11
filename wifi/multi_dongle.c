@@ -567,7 +567,7 @@ int search_bs8723(unsigned int x,unsigned int y)
         return -1;
     }
     fclose(fp);
-    if (strstr(sdio_buf,"b22723")) {
+    if (strstr(sdio_buf,"b723")) {
         write_no("rtl8723bs");
         ALOGE("Found 8723bs !!!\n");
         return 1;
