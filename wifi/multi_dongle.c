@@ -90,6 +90,7 @@ static const char BCM6255_MODULE_ARG[]   ="firmware_path=/etc/wifi/6255/fw_bcm43
 static const char BCM6212_MODULE_ARG[]   ="firmware_path=/etc/wifi/6212/fw_bcm43438a0.bin nvram_path=/etc/wifi/6212/nvram.txt";
 static const char BCM6356_MODULE_ARG[]   ="firmware_path=/etc/wifi/4356/fw_bcm4356a2_ag.bin nvram_path=/etc/wifi/4356/nvram_ap6356.txt";
 static const char BCM4358_MODULE_ARG[]   ="firmware_path=/etc/wifi/4358/fw_bcm4358_ag.bin nvram_path=/etc/wifi/4358/nvram_4358.txt";
+static const char BCM6359_MODULE_ARG[]   ="firmware_path=/etc/wifi/6359sa/fw_bcm4359c0_ag.bin nvram_path=/etc/wifi/6359sa/nvram_ap6359sa.txt";
 
 int verbose1 = 0;
 extern struct usb_bus *usb_busses;
@@ -350,6 +351,49 @@ int search_bcm4358(unsigned int x,unsigned int y)
     if (strstr(sdio_buf,"aa31")) {
         write_no("bcm4358");
         ALOGE("Found 4358 !!!\n");
+        return 1;
+    }
+    return 0;
+}
+
+int bcm6359_load_driver()
+{
+    if (wifi_insmod(BCM40183_MODULE_PATH, BCM6359_MODULE_ARG) !=0) {
+       ALOGE("Failed to insmod dhd ! \n");
+       return -1;
+    }
+    ALOGD("Success to insmod bcm6359 driver! \n");
+    return 0;
+}
+
+int bcm6359_unload_driver()
+{
+    if (wifi_rmmod(BCM40183_MODULE_NAME) != 0) {
+        ALOGE("Failed to rmmod bcm6359 driver ! \n");
+    }
+    ALOGD("Success to rmmod bcm6359 driver ! \n");
+    return 0;
+}
+
+int search_bcm6359(unsigned int x,unsigned int y)
+{
+	int fd,len;
+    char sdio_buf[128];
+
+    FILE *fp = fopen(file_name,"r");
+    if (!fp)
+        return -1;
+
+    memset(sdio_buf,0,sizeof(sdio_buf));
+    if (fread(sdio_buf, 1,128,fp) < 1) {
+        ALOGE("Read error for\n");
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+    if (strstr(sdio_buf,"4359")) {
+        write_no("bcm6359");
+        ALOGE("Found 6359 !!!\n");
         return 1;
     }
     return 0;
@@ -727,6 +771,7 @@ static const dongle_info dongle_registerd[]={\
 	{bcm6212_load_driver,bcm6212_unload_driver,search_bcm6212},\
 	{bcm6356_load_driver,bcm6356_unload_driver,search_bcm6356},\
 	{bcm4358_load_driver,bcm4358_unload_driver,search_bcm4358},\
+	{bcm6359_load_driver,bcm6359_unload_driver,search_bcm6359},\
 	{qca9377_load_driver,qca9377_unload_driver,search_qca9377},\
 	{qca6174_load_driver,qca6174_unload_driver,search_qca6174},\
 	{bs8723_load_driver,bs8723_unload_driver,search_bs8723},\
@@ -977,6 +1022,8 @@ const char *get_wifi_vendor_name()
         return "bcm6356";
     } else if(strstr(wifi_type, "bcm4358") != NULL) {
         return "bcm4358";
+    } else if (strstr(wifi_type, "bcm6359") != NULL) {
+        return "bcm6359";
     } else if(strstr(wifi_type, "qca9377") != NULL) {
         return "qca9377";
     } else if(strstr(wifi_type, "qca6174") != NULL) {
