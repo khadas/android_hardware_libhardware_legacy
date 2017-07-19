@@ -477,6 +477,16 @@ int wifi_load_driver()
 
 int wifi_unload_driver()
 {
+    char propbuf[PROPERTY_VALUE_MAX];
+
+    /* this prop is used for checking the fist boot. */
+    if (!property_get("sys.wifi.first_boot", propbuf, NULL)) {
+        ALOGD("->first boot, workaround here! do nothing, it useless!!");
+        ALOGD("->call wifi_unload_driver may be cause 400ms delay during system booting.");
+        property_set("sys.wifi.first_boot", "0");
+        return 0;
+    }
+
     usleep(200000); /* allow to finish interface down */
 #ifdef CONFIG_MTK_WIFI
     ifc_init();
