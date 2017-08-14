@@ -394,6 +394,7 @@ int search_bcm6359(unsigned int x,unsigned int y)
     if (strstr(sdio_buf,"4359")) {
         write_no("bcm6359");
         ALOGE("Found 6359 !!!\n");
+        property_set("sys.wifi.mode", "6359");
         return 1;
     }
     return 0;
@@ -437,6 +438,7 @@ int search_bcm6356(unsigned int x,unsigned int y)
     if (strstr(sdio_buf,"4356")) {
         write_no("bcm6356");
         ALOGE("Found 6356 !!!\n");
+        property_set("sys.wifi.mode", "6356");
         return 1;
     }
     return 0;
